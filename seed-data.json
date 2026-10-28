@@ -1,0 +1,409 @@
+{
+  "brandProfile": {
+    "name": "Lumina Skincare",
+    "description": "Evidence-backed clean skincare and wellness direct-to-consumer brand.",
+    "market": "India",
+    "defaultCurrency": "INR"
+  },
+  "facts": [
+    {
+      "id": "F-001",
+      "text": "Free delivery applies to all orders above ₹499 within India.",
+      "conditions": "Order subtotal >= ₹499; valid across India; standard delivery only",
+      "owner": "Brand Manager",
+      "provenance": "Shipping Policy v2.4, Section 1.1",
+      "verifiedOn": "2026-08-01",
+      "expiresOn": "2027-08-01",
+      "version": 1
+    },
+    {
+      "id": "F-002",
+      "text": "Orders placed before 2:00 PM IST Monday to Friday are dispatched on the same business day.",
+      "conditions": "Monday to Friday only; order confirmed before 14:00 IST; excludes national holidays",
+      "owner": "Operations Lead",
+      "provenance": "Fulfillment SLA 2026",
+      "verifiedOn": "2026-07-15",
+      "expiresOn": "2027-07-15",
+      "version": 1
+    },
+    {
+      "id": "F-003",
+      "text": "Standard delivery takes 3 to 5 business days for metro locations and 5 to 7 business days for rest of India.",
+      "conditions": "Business days only; metro cities include Delhi NCR, Mumbai, Bengaluru, Chennai, Kolkata, Hyderabad",
+      "owner": "Logistics Manager",
+      "provenance": "Courier Partner Master Agreement 2026",
+      "verifiedOn": "2026-06-01",
+      "expiresOn": "2027-06-01",
+      "version": 1
+    },
+    {
+      "id": "F-004",
+      "text": "Unopened products in original packaging can be returned within 30 days of delivery for a 100% refund.",
+      "conditions": "Item must be unopened with safety seal intact; return initiated within 30 days of delivery",
+      "owner": "Customer Experience Lead",
+      "provenance": "Returns & Refund Policy v3.0",
+      "verifiedOn": "2026-05-10",
+      "expiresOn": "2027-05-10",
+      "version": 1
+    },
+    {
+      "id": "F-005",
+      "text": "First-time customers receive a flat 15% discount using coupon code FIRST15 on minimum cart value of ₹999.",
+      "conditions": "Valid once per user account; first purchase only; minimum order value ₹999; cannot combine with other codes",
+      "owner": "Growth Marketing Lead",
+      "provenance": "Q3 2026 Promotional Campaign Guidelines",
+      "verifiedOn": "2026-08-15",
+      "expiresOn": "2026-12-31",
+      "version": 1
+    },
+    {
+      "id": "F-006",
+      "text": "All skincare formulations are dermatologically tested and certified cruelty-free by PETA.",
+      "conditions": "Certified under PETA Beauty Without Bunnies program 2025-2027; independent dermatology patch tests",
+      "owner": "R&D Director",
+      "provenance": "Clinical Safety Report & PETA Certification #CR-8821",
+      "verifiedOn": "2026-01-20",
+      "expiresOn": "2027-01-20",
+      "version": 1
+    },
+    {
+      "id": "F-007",
+      "text": "Customer support is available Monday through Saturday from 9:00 AM to 8:00 PM IST via in-app chat and email.",
+      "conditions": "Monday through Saturday 09:00-20:00 IST; closed on Sundays and gazetted national holidays",
+      "owner": "Customer Support Lead",
+      "provenance": "Support Operations Manual v4",
+      "verifiedOn": "2026-04-01",
+      "expiresOn": "2027-04-01",
+      "version": 1
+    },
+    {
+      "id": "F-008",
+      "text": "Annual Gold Club membership costs ₹1,499 per year and provides 5% cashback on every purchase.",
+      "conditions": "Membership valid for 365 days; cashback credited to Lumina Wallet; non-transferable",
+      "owner": "Loyalty Program Manager",
+      "provenance": "Lumina Gold Terms of Service",
+      "verifiedOn": "2026-03-15",
+      "expiresOn": "2027-03-15",
+      "version": 1
+    },
+    {
+      "id": "F-009",
+      "text": "Express next-day delivery is available for ₹99 exclusively in Mumbai, Bengaluru, and Delhi NCR.",
+      "conditions": "Orders placed before 12:00 PM; pincodes within designated metro municipal limits only; flat fee ₹99",
+      "owner": "Logistics Manager",
+      "provenance": "Express Pilot Program SOP",
+      "verifiedOn": "2026-08-01",
+      "expiresOn": "2026-11-30",
+      "version": 1
+    },
+    {
+      "id": "F-010",
+      "text": "All packaging boxes and filler materials are made from 100% biodegradable post-consumer recycled paper.",
+      "conditions": "Outer shipping boxes and paper void fill; certified FSC Recycled",
+      "owner": "Sustainability Officer",
+      "provenance": "Packaging Compliance Certificate #PC-2026-9",
+      "verifiedOn": "2026-02-14",
+      "expiresOn": "2027-02-14",
+      "version": 1
+    },
+    {
+      "id": "F-011",
+      "text": "Complimentary 50ml trial moisturizer is included with every skincare purchase above ₹1,999 while stock lasts.",
+      "conditions": "Order value after discounts >= ₹1,999; skincare category only; while promotional stock lasts",
+      "owner": "Brand Manager",
+      "provenance": "Diwali Gifting SOP 2026",
+      "verifiedOn": "2026-09-01",
+      "expiresOn": "2026-11-15",
+      "version": 1
+    },
+    {
+      "id": "F-012",
+      "text": "Gift cards are valid for 12 months from the date of purchase and are non-refundable.",
+      "conditions": "Valid for exactly 365 days; cannot be exchanged for cash or reloaded",
+      "owner": "Finance Lead",
+      "provenance": "Gift Voucher Terms & RBI PPI Guidelines",
+      "verifiedOn": "2026-01-01",
+      "expiresOn": "2027-01-01",
+      "version": 1
+    }
+  ],
+  "terms": [
+    {
+      "ruleId": "T-001",
+      "banned": ["free shipping"],
+      "preferred": "free delivery",
+      "reason": "Standard brand terminology is 'free delivery', never 'free shipping'.",
+      "category": "terminology"
+    },
+    {
+      "ruleId": "T-002",
+      "banned": ["cheapest", "lowest price in india", "unbeatable lowest rates"],
+      "preferred": "affordable pricing",
+      "reason": "Avoid unsubstantiated absolute price superlatives.",
+      "category": "tone"
+    },
+    {
+      "ruleId": "T-003",
+      "banned": ["100% natural", "pure organic", "all-natural"],
+      "preferred": "naturally derived ingredients",
+      "reason": "Regulatory compliance: cosmetic formulations contain clean, safe preservatives.",
+      "category": "terminology"
+    },
+    {
+      "ruleId": "T-004",
+      "banned": ["24/7 support", "round the clock support", "24x7 customer care"],
+      "preferred": "Monday-Saturday 9am-8pm support",
+      "reason": "Support team is not active 24/7; only Mon-Sat 9am-8pm IST.",
+      "category": "terminology"
+    },
+    {
+      "ruleId": "T-005",
+      "banned": ["miracle cure", "cures acne", "permanent cure"],
+      "preferred": "helps reduce the appearance of blemishes",
+      "reason": "Cosmetic products cannot make medical treatment or cure claims under drug regulations.",
+      "category": "tone"
+    },
+    {
+      "ruleId": "T-006",
+      "banned": ["always free delivery", "free delivery on all orders", "free delivery on every order"],
+      "preferred": "free delivery on orders above ₹499",
+      "reason": "Delivery is conditional upon ₹499 cart threshold; never universally free.",
+      "category": "tone"
+    },
+    {
+      "ruleId": "T-007",
+      "banned": ["no questions asked returns on opened items", "return used bottles", "return opened"],
+      "preferred": "30-day return policy for unopened items in original packaging",
+      "reason": "Opened products cannot be returned for hygiene and safety reasons.",
+      "category": "terminology"
+    },
+    {
+      "ruleId": "T-008",
+      "banned": ["instant delivery", "deliver within minutes"],
+      "preferred": "express next-day delivery",
+      "reason": "Express delivery is next-day in select metro areas, not on-demand instant delivery.",
+      "category": "tone"
+    }
+  ],
+  "drafts": [
+    {
+      "draftId": "D-001",
+      "title": "Diwali Festive Promotion Email",
+      "text": "Celebrate Diwali with our clean beauty range! Enjoy free delivery applies to all orders above ₹499 within India. Orders placed before 2:00 PM IST Monday to Friday are dispatched on the same business day. We also offer 24/7 support for all your festive shopping needs.",
+      "expectedClaims": [
+        {
+          "text": "Enjoy free delivery applies to all orders above ₹499 within India.",
+          "verdict": "verified",
+          "factId": "F-001",
+          "excerpt": "Free delivery applies to all orders above ₹499 within India.",
+          "explanation": "Fact F-001 directly confirms free delivery on orders above ₹499 across India.",
+          "suggestedFix": null,
+          "confidence": "high"
+        },
+        {
+          "text": "Orders placed before 2:00 PM IST Monday to Friday are dispatched on the same business day.",
+          "verdict": "verified",
+          "factId": "F-002",
+          "excerpt": "Orders placed before 2:00 PM IST Monday to Friday are dispatched on the same business day.",
+          "explanation": "Fact F-002 confirms same-day dispatch for orders before 2:00 PM IST on weekdays.",
+          "suggestedFix": null,
+          "confidence": "high"
+        },
+        {
+          "text": "We also offer 24/7 support for all your festive shopping needs.",
+          "verdict": "conflicts",
+          "factId": "F-007",
+          "excerpt": "Customer support is available Monday through Saturday from 9:00 AM to 8:00 PM IST",
+          "explanation": "Fact F-007 specifies support is available Monday through Saturday 9:00 AM to 8:00 PM IST, contradicting the 24/7 claim.",
+          "suggestedFix": "We also offer customer support Monday through Saturday from 9:00 AM to 8:00 PM IST for all your festive shopping needs.",
+          "confidence": "high"
+        }
+      ]
+    },
+    {
+      "draftId": "D-002",
+      "title": "Instagram Flash Offer Post",
+      "text": "Flash Friday! Get free delivery on every order with no minimum spend! Plus get a flat 15% discount for first-time customers using coupon code FIRST15 on minimum cart value of ₹999.",
+      "expectedClaims": [
+        {
+          "text": "Get free delivery on every order with no minimum spend!",
+          "verdict": "conflicts",
+          "factId": "F-001",
+          "excerpt": "Free delivery applies to all orders above ₹499 within India.",
+          "explanation": "Fact F-001 requires a minimum order value of ₹499 for free delivery; free delivery on every order contradicts this condition.",
+          "suggestedFix": "Get free delivery on orders above ₹499!",
+          "confidence": "high"
+        },
+        {
+          "text": "Plus get a flat 15% discount for first-time customers using coupon code FIRST15 on minimum cart value of ₹999.",
+          "verdict": "verified",
+          "factId": "F-005",
+          "excerpt": "First-time customers receive a flat 15% discount using coupon code FIRST15 on minimum cart value of ₹999.",
+          "explanation": "Fact F-005 explicitly verifies the 15% first-order discount code FIRST15 with ₹999 minimum cart.",
+          "suggestedFix": null,
+          "confidence": "high"
+        }
+      ]
+    },
+    {
+      "draftId": "D-003",
+      "title": "Brand Story Post",
+      "text": "Our skincare formulations are dermatologically tested and certified cruelty-free by PETA. Every purchase is backed by our unconditional 10-year warranty on all products.",
+      "expectedClaims": [
+        {
+          "text": "Our skincare formulations are dermatologically tested and certified cruelty-free by PETA.",
+          "verdict": "verified",
+          "factId": "F-006",
+          "excerpt": "All skincare formulations are dermatologically tested and certified cruelty-free by PETA.",
+          "explanation": "Fact F-006 validates dermatological testing and PETA cruelty-free certification.",
+          "suggestedFix": null,
+          "confidence": "high"
+        },
+        {
+          "text": "Every purchase is backed by our unconditional 10-year warranty on all products.",
+          "verdict": "unsupported",
+          "factId": null,
+          "excerpt": null,
+          "explanation": "No approved fact in the brand vault documents a 10-year warranty policy.",
+          "suggestedFix": null,
+          "confidence": "high"
+        }
+      ]
+    },
+    {
+      "draftId": "D-004",
+      "title": "Express Shipping Announcement",
+      "text": "Express next-day delivery is available for ₹99 exclusively in Mumbai, Bengaluru, and Delhi NCR. Standard delivery takes 3 to 5 business days for metro locations.",
+      "expectedClaims": [
+        {
+          "text": "Express next-day delivery is available for ₹99 exclusively in Mumbai, Bengaluru, and Delhi NCR.",
+          "verdict": "verified",
+          "factId": "F-009",
+          "excerpt": "Express next-day delivery is available for ₹99 exclusively in Mumbai, Bengaluru, and Delhi NCR.",
+          "explanation": "Fact F-009 verifies express next-day delivery pricing and regional availability.",
+          "suggestedFix": null,
+          "confidence": "high"
+        },
+        {
+          "text": "Standard delivery takes 3 to 5 business days for metro locations.",
+          "verdict": "verified",
+          "factId": "F-003",
+          "excerpt": "Standard delivery takes 3 to 5 business days for metro locations",
+          "explanation": "Fact F-003 confirms 3 to 5 business day timeline for metro areas.",
+          "suggestedFix": null,
+          "confidence": "high"
+        }
+      ]
+    }
+  ],
+  "testSetExtras": [
+    {
+      "claim": "Free delivery applies to all orders above Rs 499 within India.",
+      "expectedVerdict": "verified",
+      "expectedFactId": "F-001",
+      "expectedExcerpt": "Free delivery applies to all orders above ₹499 within India.",
+      "expectedTermFlags": [],
+      "category": "currency_normalization",
+      "notes": "Rs 499 is equivalent to ₹499 and supported by F-001."
+    },
+    {
+      "claim": "Free delivery is offered on all orders above ₹299 across India.",
+      "expectedVerdict": "conflicts",
+      "expectedFactId": "F-001",
+      "expectedExcerpt": "Free delivery applies to all orders above ₹499 within India.",
+      "expectedTermFlags": [],
+      "category": "wrong_scope_threshold",
+      "notes": "Threshold is ₹499 in vault, draft states lower threshold of ₹299."
+    },
+    {
+      "claim": "Orders placed at any time of day are dispatched on the same business day.",
+      "expectedVerdict": "conflicts",
+      "expectedFactId": "F-002",
+      "expectedExcerpt": "Orders placed before 2:00 PM IST Monday to Friday are dispatched on the same business day.",
+      "expectedTermFlags": [],
+      "category": "scope_condition_ignored",
+      "notes": "Ignores the 2:00 PM cutoff condition in F-002."
+    },
+    {
+      "claim": "Unopened products in original packaging can be returned within 30 days of delivery for a 100% refund.",
+      "expectedVerdict": "verified",
+      "expectedFactId": "F-004",
+      "expectedExcerpt": "Unopened products in original packaging can be returned within 30 days of delivery for a 100% refund.",
+      "expectedTermFlags": [],
+      "category": "standard_return",
+      "notes": "Exact match with approved return fact F-004."
+    },
+    {
+      "claim": "Return opened and half-used bottles anytime within 60 days for a full cash refund.",
+      "expectedVerdict": "conflicts",
+      "expectedFactId": "F-004",
+      "expectedExcerpt": "Unopened products in original packaging can be returned within 30 days of delivery for a 100% refund.",
+      "expectedTermFlags": ["T-007"],
+      "category": "return_contradiction",
+      "notes": "Contradicts unopened requirement and 30-day window in F-004."
+    },
+    {
+      "claim": "Annual Gold Club membership costs ₹1,499 per year and provides 5% cashback on every purchase.",
+      "expectedVerdict": "verified",
+      "expectedFactId": "F-008",
+      "expectedExcerpt": "Annual Gold Club membership costs ₹1,499 per year and provides 5% cashback on every purchase.",
+      "expectedTermFlags": [],
+      "category": "membership_verification",
+      "notes": "Directly matches F-008."
+    },
+    {
+      "claim": "Annual Gold Club membership costs ₹999 per year with 10% cashback.",
+      "expectedVerdict": "conflicts",
+      "expectedFactId": "F-008",
+      "expectedExcerpt": "Annual Gold Club membership costs ₹1,499 per year and provides 5% cashback on every purchase.",
+      "expectedTermFlags": [],
+      "category": "pricing_conflict",
+      "notes": "Vault specifies ₹1,499 and 5% cashback."
+    },
+    {
+      "claim": "All packaging boxes and filler materials are made from 100% biodegradable post-consumer recycled paper.",
+      "expectedVerdict": "verified",
+      "expectedFactId": "F-010",
+      "expectedExcerpt": "All packaging boxes and filler materials are made from 100% biodegradable post-consumer recycled paper.",
+      "expectedTermFlags": [],
+      "category": "sustainability_verified",
+      "notes": "Directly matches F-010."
+    },
+    {
+      "claim": "Our skincare serum was voted #1 best anti-aging product in Asia by Vogue.",
+      "expectedVerdict": "unsupported",
+      "expectedFactId": null,
+      "expectedExcerpt": null,
+      "expectedTermFlags": [],
+      "category": "unsupported_superlative",
+      "notes": "No award fact exists in the brand vault."
+    },
+    {
+      "claim": "Gift cards are valid for 12 months from the date of purchase and are non-refundable.",
+      "expectedVerdict": "verified",
+      "expectedFactId": "F-012",
+      "expectedExcerpt": "Gift cards are valid for 12 months from the date of purchase and are non-refundable.",
+      "expectedTermFlags": [],
+      "category": "gift_card_verified",
+      "notes": "Directly matches F-012."
+    },
+    {
+      "claim": "Gift cards never expire and can be refunded to your bank account at any time.",
+      "expectedVerdict": "conflicts",
+      "expectedFactId": "F-012",
+      "expectedExcerpt": "Gift cards are valid for 12 months from the date of purchase and are non-refundable.",
+      "expectedTermFlags": [],
+      "category": "gift_card_conflict",
+      "notes": "Contradicts 12-month expiry and non-refundable terms in F-012."
+    },
+    {
+      "claim": "Our innovative formula feels completely revolutionary for everyone.",
+      "expectedVerdict": "manual",
+      "expectedFactId": null,
+      "expectedExcerpt": null,
+      "expectedTermFlags": [],
+      "category": "ambiguous_subjective",
+      "notes": "Subjective marketing puffery; requires human review."
+    }
+  ]
+}
