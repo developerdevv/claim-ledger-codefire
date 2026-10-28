@@ -1,14 +1,146 @@
-# Claim Ledger
+# Claim Ledger — AI Evaluation & QA Module
 
-AI brand-governance tool — **Codex 48** hackathon. Fictional demo brand:
-"Saanjh". A human always decides; the AI only drafts findings.
+Claim Ledger is an evidence-backed brand-governance tool designed for the Codex 48 Hackathon. It evaluates marketing copy, product descriptions, and promotional drafts against an approved **Brand Vault** of facts, conditions, and terminology guidelines.
 
-- `client/` — React + Vite + Tailwind frontend. Setup, env vars, mock mode,
-  the API contract and a judge walkthrough: see [`client/README.md`](client/README.md).
+This Python module provides the core AI evaluation and quality-assurance pipeline that runs standalone alongside the Node/Express backend.
 
-Backend packages will live alongside `client/` as teammates add them. The
-frontend talks to it through `client/src/lib/api.js` only.
+---
 
-```bash
-cd client && npm install --legacy-peer-deps && cp .env.example .env.local && npm run dev
+## Architecture Overview
+
 ```
+Draft Text
+   │
+   ├─► Deterministic Term/Tone Rules (check_terms) ──► Term Flags (ruleId, matched, fix)
+   │
+   ├─► Normalized Keyword Retrieval (retrieve_facts) ──► Relevant Vault Facts
+   │
+   └─► LLM Prompt Generation (extract_v1.txt)
+          │
+          ▼
+       LLM Adapter (Gemini / OpenAI / Groq / MOCK)
+          │
+          ▼
+       Raw JSON Output
+          │
+          ▼
+       Strict Schema & Grounding Validator (validate_output)
+          ├─► Valid JSON against claims.schema.json
+          ├─► Verifies cited fact IDs exist in Brand Vault
+          ├─► Verifies excerpts exist in cited fact text
+          └─► On failure: routes to single 'manual' review result
+          │
+          ▼
+       Receipts & Verdicts (verified | conflicts | unsupported | manual)
+```
+
+### Core Design Principles
+1. **Model Output is Untrusted:** The LLM proposes verdicts, but code validates the output against `claims.schema.json`, verifies every cited fact ID against the vault, and checks excerpt substrings.
+2. **AI Never Approves:** AI never approves or publishes copy; verdicts provide verifiable receipts for human reviewer approval.
+3. **Deterministic Rules Over Hallucinations:** Terminology bans and tone rules (e.g. banning "free shipping" in favor of "free delivery", prohibiting medical cure claims) run deterministically via regular expressions, not via LLM discretion.
+4. **Stated Uncertainty:** The `unsupported` verdict means no approved brand fact was found; it never claims a statement is false.
+
+---
+
+## Directory Structure
+
+```
+ai_eval/
+  prompts/
+    extract_v1.txt        # Claim extraction + verification prompt (with few-shot examples)
+    rewrite_v1.txt        # Minimal intent-preserving rewrite prompt
+  schema/
+    claims.schema.json    # Language-neutral JSON Schema reusable by Node/Express
+    validate.py           # validate_output(raw_output, facts) -> dict
+  src/
+    __init__.py
+    llm_client.py         # Provider-neutral adapter with deterministic MOCK mode
+    retrieval.py          # Keyword & number normalized retrieval from vault
+    rule_checks.py        # Deterministic term/tone checker using seed-data.json
+    pipeline.py           # End-to-end pipeline orchestrator
+  testset/
+    claims.json           # Labelled test set (expectedClaims + testSetExtras + 20 new lines)
+  eval/
+    __init__.py
+    run.py                # Evaluation runner computing precision/recall/F1 by hand
+    results/              # Output directory for timestamped JSON results and CSV audit
+  tests/
+    test_validate.py      # Unit tests for the output validator
+    test_rule_checks.py   # Unit tests for the deterministic rule checker
+  docs/
+    failure-log.md        # Table template for tracking evaluation failures
+    baseline-report.md    # Baseline benchmark report populated by run.py
+requirements.txt          # Minimal dependencies
+README.md                 # Setup, usage, and disclosures
+seed-data.json            # Single source of truth (facts, terms, drafts, test extras)
+.env.example              # Environment variable template
+.gitignore                # Excludes secrets, results, and pycache
+```
+
+---
+
+## Environment Variables
+
+Configure your environment variables in `.env` (copy from `.env.example`):
+
+| Variable | Description | Default / Example |
+| :--- | :--- | :--- |
+| `LLM_PROVIDER` | LLM service provider: `mock`, `gemini` (or `google`), `openai`, `groq` | `mock` |
+| `LLM_MODEL` | Model identifier string | `mock-claim-engine-v1` (or `gemini-2.5-flash`) |
+| `LLM_API_KEY` | API key for the chosen provider (read from env only, never committed) | *(none for mock)* |
+
+---
+
+## Quick Start & Execution
+
+### 1. Installation
+Install the minimal dependencies:
+```bash
+pip install -r requirements.txt
+```
+*(Or use `py -m pip install -r requirements.txt` on Windows)*
+
+### 2. Run the Evaluation Suite (Mock Mode)
+The test suite runs end-to-end deterministically without any external API keys or network calls:
+```bash
+python -m ai_eval.eval.run --mock
+```
+*(Or `py -m ai_eval.eval.run --mock`)*
+
+CLI Options:
+- `--mock`: Forces deterministic mock mode.
+- `--limit N`: Runs evaluation on the first N test cases.
+- `--verbose`: Prints step-by-step evaluation outputs for each case.
+
+**Artifacts Generated by Evaluation:**
+- Detailed timestamped results: `ai_eval/eval/results/eval_run_<timestamp>.json`
+- Human grounding audit sheet: `ai_eval/eval/results/grounding_check.csv`
+- Updated baseline report: `ai_eval/docs/baseline-report.md`
+
+### 3. Run Pytest Suite
+Run the unit test suite covering validation logic and deterministic rule matching:
+```bash
+pytest
+```
+*(Or `py -m pytest`)*
+
+---
+
+## Human Grounding & Oversight Workflow
+
+Because model output is inherently probabilistic, Claim Ledger includes an explicit human grounding verification workflow:
+1. Every evaluation run automatically generates `ai_eval/eval/results/grounding_check.csv`.
+2. The file contains the claim, assigned verdict, cited fact ID, full fact text, and the extracted quote.
+3. A human reviewer audits the outputs and populates the `supports (y/n)` column to verify true grounding before brand managers approve copy.
+
+---
+
+## Disclosures & Project Integrity
+
+- **AI Assistance:** In compliance with hackathon guidelines, the architecture, scaffolding, test cases, and evaluation scripts were created with AI assistance using **Antigravity** and reviewed, validated, and tested by team CODEFIRE.
+- **LLM Provider & Model:** 
+  - Primary production provider: **Gemini API** (`gemini-2.5-flash`) via `google-genai`.
+  - Fallback / local evaluation provider: **Mock Provider** (`mock-claim-engine-v1`) returning deterministic schema-compliant outputs.
+- **Libraries Used:** Standard Python 3.10+ library, `jsonschema` (schema validation), `python-dotenv` (environment configuration), `pytest` (testing), and `google-genai` (LLM SDK). No heavy ML frameworks (like scikit-learn) are used; precision and recall formulas are implemented directly by hand.
+- **Sample Data:** All brand facts, terminology rules, and marketing drafts in `seed-data.json` are fictional scenarios created specifically for demonstration and testing purposes.
+- **Accuracy Reporting:** No speculative accuracy claims are made in this documentation; all reported performance figures reflect empirical measurements produced by `ai_eval/eval/run.py`.

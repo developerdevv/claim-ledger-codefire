@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://claimledger.internal/schemas/claims.schema.json",
+  "title": "ClaimsExtractionOutput",
+  "description": "Language-neutral schema for LLM claim extraction and verification output in Claim Ledger.",
+  "type": "object",
+  "properties": {
+    "claims": {
+      "type": "array",
+      "description": "List of individual checkable claims evaluated against the brand vault.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The exact or normalized checkable claim statement extracted from the draft."
+          },
+          "verdict": {
+            "type": "string",
+            "enum": ["verified", "conflicts", "unsupported", "manual"],
+            "description": "Verification status: verified (fully supported by cited fact), conflicts (contradicted or scope ignored), unsupported (no approved source found), manual (ambiguous; human review needed)."
+          },
+          "factId": {
+            "type": ["string", "null"],
+            "description": "ID of the approved fact from the vault (e.g. F-001). Must be non-null for verified/conflicts, null for unsupported/manual unless citing related context."
+          },
+          "excerpt": {
+            "type": ["string", "null"],
+            "description": "Exact text excerpt from the cited fact that grounds the verdict. Must appear in fact text if factId is provided."
+          },
+          "explanation": {
+            "type": "string",
+            "description": "Clear explanation of how the fact supports or conflicts with the claim, or note that no approved fact exists."
+          },
+          "suggestedFix": {
+            "type": ["string", "null"],
+            "description": "Intent-preserving rewrite for conflicting claims, or null if verified/unsupported."
+          },
+          "confidence": {
+            "type": "string",
+            "enum": ["low", "medium", "high"],
+            "description": "Assessment confidence level."
+          }
+        },
+        "required": [
+          "text",
+          "verdict",
+          "factId",
+          "excerpt",
+          "explanation",
+          "suggestedFix",
+          "confidence"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["claims"],
+  "additionalProperties": false
+}

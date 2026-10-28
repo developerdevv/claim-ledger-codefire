@@ -1,17 +1,26 @@
-node_modules
-dist
+# Environment secrets
 .env
-.env.*
-!.env.example
-*.log
+.env.local
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Python cache & artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.pytest_cache/
+.pytest_cache/
+
+# Evaluation results output directory
+ai_eval/eval/results/
+eval/results/
+
+# IDE & OS files
+.vscode/
+.idea/
 .DS_Store
-
-# local smoke-test harness (puppeteer), not part of the deliverable
-/smoke/
-
-# local caches
-.cache/
-.local/
-.sudo_as_admin_successful
-.npm/
-.config/
+Thumbs.db

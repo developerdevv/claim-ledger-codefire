@@ -1,0 +1,5 @@
+# Minimal dependencies for Claim Ledger AI Evaluation & QA module
+jsonschema>=4.20.0
+python-dotenv>=1.0.0
+pytest>=8.0.0
+google-genai>=1.0.0
