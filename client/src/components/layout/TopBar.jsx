@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Info, Menu, RotateCcw } from 'lucide-react'
 import * as api from '../../lib/api'
+import { clearLastDraftId } from '../../lib/reviewStore'
 import { useDemo } from '../../state/demo'
 import { useToast } from '../ui/Toast'
 import Button from '../ui/Button'
@@ -17,6 +18,9 @@ export default function TopBar({ title, onOpenDrawer }) {
     setResetting(true)
     try {
       await api.resetDemo()
+      // A reset also forgets the remembered Review draft — seeded drafts are
+      // back, but anything created this session is gone.
+      clearLastDraftId()
       setConfirmOpen(false)
       bumpRefresh()
       toast({

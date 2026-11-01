@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Ban,
   CircleHelp,
@@ -14,6 +14,14 @@ import * as api from '../lib/api'
 import { copyToClipboard } from '../lib/clipboard'
 import { formatRelative, wordCount } from '../lib/format'
 import { navigate } from '../lib/router'
+import {
+  clearLastDraftId,
+  clearUnsent,
+  readLastDraftId,
+  readUnsent,
+  writeLastDraftId,
+  writeUnsent,
+} from '../lib/reviewStore'
 import { actorLabel, useDemo } from '../state/demo'
 import Button from '../components/ui/Button'
 import { EmptyState, ErrorState, LoadingBlock, Skeleton } from '../components/ui/States'
@@ -70,6 +78,14 @@ export default function ReviewPage({ route }) {
   const [decisionAction, setDecisionAction] = useState(null)
   const [deciding, setDeciding] = useState(false)
 
+  /* --------------------- draft persistence (sessionStorage) --------------------- */
+  const [goneNotice, setGoneNotice] = useState(false)
+  // Mutable mirror of draftId for effect guards (no extra renders).
+  const draftIdRef = useRef(null)
+  // `${draftParam}|${refreshKey}` currently reflected in state — lets the
+  // routing effect skip reloads triggered by our own replaceState URL sync.
+  const loadedKeyRef = useRef(null)
+
   const dirty = checkedText !== null && checkedText !== text
   const hasResults = Array.isArray(claims)
   const canDecide = role === 'reviewer' || role === 'manager'
@@ -109,6 +125,7 @@ export default function ReviewPage({ route }) {
   const loadDraft = useCallback((id) => {
     let alive = true
     setDraftLoad({ loading: true, error: null })
+    setGoneNotice(false)
     api
       .getDraft(id)
       .then(({ draft, claims: savedClaims }) => {
@@ -116,7 +133,9 @@ export default function ReviewPage({ route }) {
         setTitle(draft.title || '')
         setContentType(draft.contentType || 'Other')
         setText(draft.text || '')
+        draftIdRef.current = draft._id
         setDraftId(draft._id)
+        writeLastDraftId(draft._id)
         setDraftStatus(draft.status ?? null)
         setDecisions(draft.decisions ?? [])
         setClaims(savedClaims)
@@ -128,36 +147,97 @@ export default function ReviewPage({ route }) {
       })
       .catch((err) => {
         if (!alive) return
+        // A draft that no longer exists is NOT a red error: forget the stored
+        // id and show the empty composer with a small neutral notice instead.
+        // Real network failures keep the existing error state + Retry.
+        const gone = err?.status === 404 || /not found/i.test(String(err?.message ?? ''))
         setClaims(null)
         setCheckedText(null)
+        setLastCheckedAt(null)
+        setManualReview(false)
+        draftIdRef.current = null
         setDraftId(null)
-        setDraftLoad({ loading: false, error: err })
+        setDraftStatus(null)
+        setDecisions([])
+        clearLastDraftId()
+        loadedKeyRef.current = null
+        if (gone) {
+          setTitle('')
+          setContentType(CONTENT_TYPES[0])
+          setText('')
+          setGoneNotice(true)
+          setDraftLoad({ loading: false, error: null })
+        } else {
+          setGoneNotice(false)
+          setDraftLoad({ loading: false, error: err })
+        }
       })
     return () => {
       alive = false
     }
   }, [])
 
-  // Load the draft requested via #/review?draft=D-2 (Impact View, samples …),
-  // or start a fresh composer for plain #/review.
+  // Load the draft requested via #/review?draft=D-2 (Impact View, samples …).
+  // Plain #/review reopens the remembered draft (sessionStorage) when there is
+  // one — that covers the sidebar link and every other draft-less link;
+  // otherwise start a fresh composer and restore any unsent text.
   useEffect(() => {
-    if (!draftParam) {
-      setTitle('')
-      setContentType(CONTENT_TYPES[0])
-      setText('')
-      setDraftId(null)
-      setDraftStatus(null)
-      setDecisions([])
-      setClaims(null)
-      setManualReview(false)
-      setCheckedText(null)
-      setLastCheckedAt(null)
-      setCheckError(null)
-      setDraftLoad({ loading: false, error: null })
+    if (draftParam) {
+      const key = `${draftParam}|${refreshKey}`
+      // Our own replaceState URL sync re-fires this effect — skip the reload
+      // when the state already reflects exactly this draft + refresh cycle.
+      if (loadedKeyRef.current === key) return
+      loadedKeyRef.current = key
+      const cleanup = loadDraft(draftParam)
+      return () => {
+        // Leaving this param/refresh state invalidates the guard, so React
+        // StrictMode's double-invoked effects (and HMR) always re-fetch.
+        loadedKeyRef.current = null
+        cleanup?.()
+      }
+    }
+
+    const remembered = readLastDraftId()
+    if (remembered) {
+      navigate(`/review?draft=${encodeURIComponent(remembered)}`, { replace: true })
       return
     }
-    return loadDraft(draftParam)
+
+    setGoneNotice(false)
+    setTitle('')
+    setContentType(CONTENT_TYPES[0])
+    setText('')
+    draftIdRef.current = null
+    setDraftId(null)
+    setDraftStatus(null)
+    setDecisions([])
+    setClaims(null)
+    setManualReview(false)
+    setCheckedText(null)
+    setLastCheckedAt(null)
+    setCheckError(null)
+    setDraftLoad({ loading: false, error: null })
+    loadedKeyRef.current = null
+
+    // Restore text typed but not checked yet. This branch only runs when no
+    // draft is open, so it can never overwrite a draft loaded from the server.
+    const unsent = readUnsent()
+    if (unsent) {
+      setTitle(String(unsent.title ?? ''))
+      setContentType(
+        CONTENT_TYPES.includes(unsent.contentType) ? unsent.contentType : CONTENT_TYPES[0],
+      )
+      setText(String(unsent.text ?? ''))
+    }
   }, [draftParam, refreshKey, loadDraft])
+
+  // Persist unsent composer text while no draft is open. It is cleared
+  // explicitly when the content is checked or a fresh draft is started; the
+  // helpers no-op when storage is blocked.
+  useEffect(() => {
+    if (draftIdRef.current) return
+    if (title.trim() || text.trim()) writeUnsent({ title, contentType, text })
+  }, [title, contentType, text])
 
   /* --------------------------------- actions -------------------------------- */
 
@@ -195,7 +275,17 @@ export default function ReviewPage({ route }) {
         text,
       })
       const finalId = res.draftId ?? id
-      if (finalId && finalId !== draftId) setDraftId(finalId)
+      if (finalId) {
+        if (finalId !== draftId) setDraftId(finalId)
+        draftIdRef.current = finalId
+        writeLastDraftId(finalId)
+        clearUnsent() // the text is checked now — it lives on the draft
+        loadedKeyRef.current = `${finalId}|${refreshKey}`
+        // Keep the address in sync without stacking browser-history entries.
+        if (draftParam !== finalId) {
+          navigate(`/review?draft=${encodeURIComponent(finalId)}`, { replace: true })
+        }
+      }
       setClaims(res.claims)
       setManualReview(res.manualReview)
       setCheckedText(text)
@@ -306,20 +396,25 @@ export default function ReviewPage({ route }) {
   }
 
   function startFresh() {
+    // A fresh draft forgets the remembered id and any unsent text.
+    clearLastDraftId()
+    clearUnsent()
+    setGoneNotice(false)
     if (draftParam) navigate('/review')
-    else {
-      setTitle('')
-      setText('')
-      setContentType(CONTENT_TYPES[0])
-      setDraftId(null)
-      setDraftStatus(null)
-      setDecisions([])
-      setClaims(null)
-      setManualReview(false)
-      setCheckedText(null)
-      setLastCheckedAt(null)
-      setCheckError(null)
-    }
+    draftIdRef.current = null
+    loadedKeyRef.current = null
+    setTitle('')
+    setText('')
+    setContentType(CONTENT_TYPES[0])
+    setDraftId(null)
+    setDraftStatus(null)
+    setDecisions([])
+    setClaims(null)
+    setManualReview(false)
+    setCheckedText(null)
+    setLastCheckedAt(null)
+    setCheckError(null)
+    setDraftLoad({ loading: false, error: null })
   }
 
   async function handleDecisionSubmit(comment) {
@@ -388,6 +483,18 @@ export default function ReviewPage({ route }) {
           </div>
 
           <div className="space-y-4 px-4 py-4 sm:px-5">
+            {goneNotice && (
+              <p
+                role="status"
+                className="flex flex-wrap items-center gap-x-2.5 gap-y-2 rounded-md border border-line-strong bg-tint px-3.5 py-2.5 text-xs leading-relaxed text-ink-soft"
+              >
+                <Info size={13} aria-hidden="true" className="shrink-0" />
+                That draft is no longer available.
+                <Button size="sm" variant="secondary" onClick={startFresh}>
+                  Start a fresh draft
+                </Button>
+              </p>
+            )}
             <div>
               <label htmlFor="draft-title" className="block text-sm font-medium text-ink">
                 Title
