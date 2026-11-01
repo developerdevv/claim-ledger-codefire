@@ -82,7 +82,7 @@ export function extractJsonArray(content) {
   throw llmError('LLM_MALFORMED', 'LLM did not return a JSON claims array.')
 }
 
-function parseProposals(content) {
+export function parseProposals(content) {
   const result = proposalsSchema.safeParse(extractJsonArray(content))
   if (!result.success) {
     console.warn(
