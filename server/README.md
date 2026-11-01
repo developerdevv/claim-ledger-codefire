@@ -496,6 +496,100 @@ If `DEMO_MODE=false`, the safe response is:
 }
 ```
 
+
+### Dismiss a flagged claim ("this flag is wrong")
+
+`PATCH /drafts/:id/claims/:claimId/dismiss`
+
+Request:
+
+```json
+{ "reason": "Approved by legal for this campaign.", "actor": "Reviewer (demo)" }
+```
+
+- `reason` is required, 3 to 300 characters. `actor` is optional.
+- Only claims that are not `verified` can be dismissed (otherwise `400`).
+- The claim must belong to the draft (otherwise `404`).
+- Dismissing is **idempotent**: repeating it changes nothing and is counted once.
+- The response is the claim with `dismissal: { reason, actor, at }`.
+- Every dismissal is also written to a permanent override log, so re-checking a draft never erases what reviewers said.
+
+`DELETE /drafts/:id/claims/:claimId/dismiss` undoes it. The response is the claim with `dismissal: null`.
+
+### Guideline Health
+
+`GET /guideline-health`
+
+Ranks which rules and facts reviewers override most, built only from the override log.
+
+```json
+{
+  "totalOverrides": 3,
+  "items": [
+    {
+      "sourceId": "T-004",
+      "sourceType": "terminology",
+      "verdict": "conflicts",
+      "label": "Say \"free delivery\", not \"free shipping\"",
+      "count": 2,
+      "draftCount": 2,
+      "lastAt": "2026-11-01T10:00:00.000Z",
+      "example": "Free shipping on express orders.",
+      "reasons": ["Legal approved this wording."]
+    }
+  ]
+}
+```
+
+Flags with no approved source (for example unverified superlatives) are grouped under `sourceId: null`. A rule that appears near the top is a candidate for clearer wording.
+
+### Extract text from a PDF
+
+`POST /documents/extract` as `multipart/form-data`, field name `file`.
+
+```json
+{
+  "filename": "brief.pdf",
+  "pages": 3,
+  "characters": 2410,
+  "truncated": false,
+  "text": "…"
+}
+```
+
+The extracted text is then checked through the normal check endpoint. The file is treated as untrusted and is never stored.
+
+| Case | Response |
+|---|---|
+| No file | `400` Choose a PDF file to upload. |
+| Not a PDF (checked by content, not file name) | `415` That file is not a PDF. |
+| Larger than 5 MB | `413` |
+| More than 30 pages | `413` |
+| Damaged or password-protected | `422` |
+| Scanned or image-only (no text) | `422` No readable text was found. |
+| Text longer than 12,000 characters | `200` with `truncated: true` and the first 12,000 characters |
+
+This endpoint shares the check rate limit of 20 requests per minute per IP.
+
+### Wording checks (`textChecks`)
+
+`POST /check`, `POST /drafts/:id/recheck` and `GET /drafts/:id` also return `textChecks`, a list of readability and accessibility guidance. These are never verdicts and never approvals.
+
+```json
+{ "ruleId": "A-1", "kind": "accessibility", "excerpt": "Click here",
+  "message": "\"Click here\" tells screen-reader users nothing about where the link goes.",
+  "suggestion": "Name the destination instead, for example \"See the delivery policy\"." }
+```
+
+| Rule | Kind | Flags |
+|---|---|---|
+| A-1 | accessibility | Vague link text: click here, tap here, read more, learn more, this link |
+| A-2 | accessibility | A run of three or more words in capitals |
+| A-3 | accessibility | Long all-lowercase hashtags |
+| A-4 | accessibility | Four or more emoji in a row |
+| R-1 | readability | Sentences over 30 words |
+
+
 ## Checking pipeline and server verdict law
 
 The API treats a draft as untrusted input. Text embedded in it cannot change server rules, grant approval, alter retrieval, or override the response contract.
