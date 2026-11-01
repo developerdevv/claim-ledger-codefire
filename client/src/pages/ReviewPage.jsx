@@ -15,10 +15,13 @@ import { copyToClipboard } from '../lib/clipboard'
 import { formatRelative, wordCount } from '../lib/format'
 import { navigate } from '../lib/router'
 import {
+  clearHelpDismissed,
   clearLastDraftId,
   clearUnsent,
+  readHelpDismissed,
   readLastDraftId,
   readUnsent,
+  writeHelpDismissed,
   writeLastDraftId,
   writeUnsent,
 } from '../lib/reviewStore'
@@ -38,6 +41,8 @@ import ClaimCard from '../components/review/ClaimCard'
 import DecisionDialog, { DECISION_META } from '../components/review/DecisionDialog'
 import TextChecksSection from '../components/review/TextChecksSection'
 import { PdfImportButton, PdfImportStatus, usePdfImport } from '../components/review/PdfImport'
+import CheckModeBadge from '../components/review/CheckModeBadge'
+import HowToHint from '../components/review/HowToHint'
 
 const CONTENT_TYPES = [
   'Instagram caption',
@@ -68,6 +73,12 @@ export default function ReviewPage({ route }) {
   // Wording/readability findings (never mixed with claims). null = no check
   // has run yet, so the section (and its empty line) stays hidden.
   const [textChecks, setTextChecks] = useState(null)
+  // How the current results were produced: 'llm' | 'fallback' | null
+  // (unknown — older drafts). Kept in state exactly like textChecks: set on
+  // check, Re-check and draft-open, cleared on fresh/start-fresh/gone.
+  const [checkMode, setCheckMode] = useState(null)
+  // First-run help hint: dismissed via "Got it" (localStorage, try/catch).
+  const [helpDismissed, setHelpDismissed] = useState(() => readHelpDismissed())
   const [checkedText, setCheckedText] = useState(null)
   const [lastCheckedAt, setLastCheckedAt] = useState(null)
   const [checking, setChecking] = useState(false)
@@ -133,7 +144,7 @@ export default function ReviewPage({ route }) {
     setGoneNotice(false)
     api
       .getDraft(id)
-      .then(({ draft, claims: savedClaims, textChecks: savedTextChecks }) => {
+      .then(({ draft, claims: savedClaims, textChecks: savedTextChecks, checkMode: savedCheckMode }) => {
         if (!alive || !draft) return
         setTitle(draft.title || '')
         setContentType(draft.contentType || 'Other')
@@ -146,6 +157,7 @@ export default function ReviewPage({ route }) {
         setClaims(savedClaims)
         setManualReview(false)
         setTextChecks(savedTextChecks ?? [])
+        setCheckMode(savedCheckMode ?? null)
         setCheckedText(draft.text || '')
         setLastCheckedAt(draft.updatedAt ?? null)
         setCheckError(null)
@@ -162,6 +174,7 @@ export default function ReviewPage({ route }) {
         setLastCheckedAt(null)
         setManualReview(false)
         setTextChecks(null)
+        setCheckMode(null)
         draftIdRef.current = null
         setDraftId(null)
         setDraftStatus(null)
@@ -221,6 +234,7 @@ export default function ReviewPage({ route }) {
     setClaims(null)
     setManualReview(false)
     setTextChecks(null)
+    setCheckMode(null)
     setCheckedText(null)
     setLastCheckedAt(null)
     setCheckError(null)
@@ -260,6 +274,28 @@ export default function ReviewPage({ route }) {
       setTitle((prev) => (prev.trim() ? prev : String(res.filename).replace(/\.pdf$/i, '')))
     },
   })
+
+  /* First-run help hint (Round 3, F5): shown only while the composer is
+     empty, no draft is open and nothing is loading. "Got it" remembers the
+     dismissal in localStorage (wrapped in try/catch — blocked storage just
+     means the hint shows again); the small "Show help" button in the page
+     header row brings it back and clears the dismissal. */
+  const composerIdle = !draftId && !draftLoad.loading && !text.trim()
+  const showHowTo = composerIdle && !helpDismissed
+  const showHelpLink = composerIdle && helpDismissed
+
+  function dismissHowTo() {
+    writeHelpDismissed()
+    setHelpDismissed(true)
+  }
+  function restoreHowTo() {
+    clearHelpDismissed()
+    setHelpDismissed(false)
+  }
+  function tryFirstSample() {
+    const first = samples?.[0]
+    if (first) loadSample(first)
+  }
 
   /* --------------------------------- actions -------------------------------- */
 
@@ -311,6 +347,7 @@ export default function ReviewPage({ route }) {
       setClaims(res.claims)
       setManualReview(res.manualReview)
       setTextChecks(res.textChecks ?? [])
+      setCheckMode(res.checkMode ?? null)
       setCheckedText(text)
       setLastCheckedAt(new Date().toISOString())
       loadSamples()
@@ -435,6 +472,7 @@ export default function ReviewPage({ route }) {
     setClaims(null)
     setManualReview(false)
     setTextChecks(null)
+    setCheckMode(null)
     setCheckedText(null)
     setLastCheckedAt(null)
     setCheckError(null)
@@ -491,9 +529,27 @@ export default function ReviewPage({ route }) {
   /* ---------------------------------- render --------------------------------- */
 
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+    <>
+      {/* Small page-header row: brings the first-run hint back after "Got it".
+          Rendered only when the hint could actually show, so it never looks
+          like a dead control. */}
+      {showHelpLink && (
+        <div className="mb-3 flex justify-end">
+          <Button size="sm" variant="ghost" icon={CircleHelp} onClick={restoreHowTo}>
+            Show help
+          </Button>
+        </div>
+      )}
+      <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
       {/* ------------------------------ LEFT: composer ----------------------------- */}
       <div className="space-y-5">
+        {showHowTo && (
+          <HowToHint
+            onTrySample={tryFirstSample}
+            canTrySample={Boolean(samples?.length)}
+            onGotIt={dismissHowTo}
+          />
+        )}
         <section aria-labelledby="draft-editor-heading" className="rounded-xl border border-line bg-surface shadow-[0_1px_2px_rgba(27,34,54,0.05)]">
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-3 sm:px-5">
             <h2 id="draft-editor-heading" className="font-heading flex items-center gap-2 text-base font-semibold text-ink">
@@ -727,6 +783,9 @@ export default function ReviewPage({ route }) {
                       </span>
                     )
                   })}
+                  {/* How this check was produced — renders nothing when the
+                      mode is missing/unknown; never part of claim totals. */}
+                  <CheckModeBadge mode={checkMode} />
                   {dismissedCount > 0 && (
                     <span className="inline-flex items-center gap-1.5 rounded-full border border-line-strong bg-tint px-3 py-1 text-xs font-semibold text-ink-soft">
                       <Ban size={13} aria-hidden="true" strokeWidth={2.2} />
@@ -866,6 +925,7 @@ export default function ReviewPage({ route }) {
         onClose={() => !deciding && setDecisionAction(null)}
         onSubmit={handleDecisionSubmit}
       />
-    </div>
+      </div>
+    </>
   )
 }

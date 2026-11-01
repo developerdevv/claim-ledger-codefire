@@ -77,3 +77,39 @@ export function clearUnsent() {
     /* ignore */
   }
 }
+
+/* -------------------------------------------------------------------------- */
+/* First-run help hint                                                         */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * "Got it" on the How-to card is a cross-session preference, so it lives in
+ * localStorage (sessionStorage would forget it every new tab). Every access
+ * is wrapped in try/catch: when storage is blocked the read returns false and
+ * the hint simply shows again — nothing crashes.
+ */
+const HELP_KEY = 'claimledger.review.helpDismissed'
+
+export function readHelpDismissed() {
+  try {
+    return window.localStorage.getItem(HELP_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+export function writeHelpDismissed() {
+  try {
+    window.localStorage.setItem(HELP_KEY, '1')
+  } catch {
+    /* ignore — the hint will show again next visit */
+  }
+}
+
+export function clearHelpDismissed() {
+  try {
+    window.localStorage.removeItem(HELP_KEY)
+  } catch {
+    /* ignore */
+  }
+}

@@ -65,6 +65,18 @@ function textChecksFor(draftId, text) {
 }
 
 /**
+ * checkMode per seeded draft, so both badge states are testable:
+ * D-1 / D-3 were "checked by the AI model", D-2 hit the rule-engine fallback.
+ * Drafts created during the session deliberately carry NO checkMode — they
+ * exercise the "older draft / unknown" path (badge hidden, never crash).
+ */
+const MOCK_CHECK_MODES = {
+  'D-1': 'llm',
+  'D-2': 'fallback',
+  'D-3': 'llm',
+}
+
+/**
  * Sample text returned by the mock document extractor — about 600 characters
  * of fictional brochure copy, served as "2 pages". Mentions the demo world's
  * material/shipping promises so pressing "Check content" afterwards produces
@@ -319,6 +331,9 @@ export function createMockAdapter() {
         claims: clone(stored),
         manualReview,
         textChecks: manualReview ? [] : clone(textChecksFor(draft._id, text)),
+        // The mock check IS the built-in rule engine — no AI is involved in
+        // mock mode, so honestly report the fallback path.
+        checkMode: 'fallback',
       }
     },
 
@@ -363,10 +378,14 @@ export function createMockAdapter() {
       await wait()
       const draft = findDraft(id)
       if (!draft) throw new ApiError(`Draft ${id} was not found.`, { status: 404 })
+      const mode = MOCK_CHECK_MODES[id]
       return {
         draft: clone(draft),
         claims: clone(claimsForDraft(id)),
         textChecks: clone(textChecksFor(id, draft.text)),
+        // Session-created drafts have no checkMode — the field is absent, so
+        // the API layer normalizes it to null (unknown) and the badge hides.
+        ...(mode ? { checkMode: mode } : {}),
       }
     },
 

@@ -234,6 +234,17 @@ function normalizeTextChecks(raw) {
   return asArray(raw).map(normalizeTextCheck).slice(0, 20)
 }
 
+/**
+ * How the check was produced: "llm" (an AI model proposed the verdicts) or
+ * "fallback" (the built-in rule engine ran because the AI was unavailable).
+ * Anything else — including a missing field on older drafts — normalizes to
+ * null (unknown) so the UI can simply show nothing and never crash.
+ */
+export function normalizeCheckMode(raw) {
+  const v = String(raw ?? '').toLowerCase()
+  return v === 'llm' || v === 'fallback' ? v : null
+}
+
 /** Lock the claim shape: { _id, draftId, text, verdict, factId, excerpt, explanation, suggestion, dismissal } */
 export function normalizeClaim(raw, index = 0) {
   const c = raw && typeof raw === 'object' ? raw : {}
@@ -396,6 +407,7 @@ export async function checkContent(payload) {
     manualReview: Boolean(res.manualReview),
     draftId,
     textChecks: normalizeTextChecks(res.textChecks),
+    checkMode: normalizeCheckMode(res.checkMode),
   }
 }
 
@@ -405,7 +417,10 @@ export async function listDrafts() {
   return asArray(await adapter.listDrafts(), 'drafts').map((d) => pickDraft(d) ?? d)
 }
 
-/** → { draft, claims: claim[], textChecks: textCheck[] } (missing field → []) */
+/**
+ * → { draft, claims: claim[], textChecks: textCheck[], checkMode }.
+ * Missing fields (older drafts) → [] / null; never crashes.
+ */
 export async function getDraft(id) {
   const adapter = await getAdapter()
   const res = (await adapter.getDraft(id)) ?? {}
@@ -414,6 +429,7 @@ export async function getDraft(id) {
     draft,
     claims: asArray(res?.claims ?? draft?.claims).map(normalizeClaim),
     textChecks: normalizeTextChecks(res?.textChecks ?? draft?.textChecks),
+    checkMode: normalizeCheckMode(res?.checkMode ?? draft?.checkMode),
   }
 }
 
