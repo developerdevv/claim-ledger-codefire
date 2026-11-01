@@ -8,7 +8,7 @@ import { performCheck } from '../services/checkPipeline.js'
 
 const router = Router()
 
-export const MAX_CHECK_TEXT = 5000
+export const MAX_CHECK_TEXT = 12000
 
 /** text required (mock message byte-parity), title/contentType/draftId optional. */
 const checkSchema = z.object({
