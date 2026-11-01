@@ -82,6 +82,10 @@ export function extractJsonArray(content) {
 function parseProposals(content) {
   const result = proposalsSchema.safeParse(extractJsonArray(content))
   if (!result.success) {
+    console.warn(
+      '[check] LLM schema mismatch at:',
+      result.error.issues.slice(0, 5).map((i) => `${i.path.join('.')}:${i.code}`).join(', '),
+    )
     throw llmError('LLM_MALFORMED', 'LLM claims did not match the required schema.')
   }
   return result.data
