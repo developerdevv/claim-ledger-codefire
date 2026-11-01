@@ -23,6 +23,13 @@ const claimSchema = new mongoose.Schema(
     aiGenerated: { type: Boolean, default: false },
     checkMode: { type: String, enum: ['llm', 'fallback', null], default: null },
     uncertainty: { type: String, enum: ['low', 'medium', 'high', null], default: null }, // label, never %
+    dismissal: {
+      type: new mongoose.Schema(
+        { reason: String, actor: String, at: Date },
+        { _id: false },
+      ),
+      default: null,
+    },
     createdAt: { type: Date, default: () => new Date() },
     seq: { type: Number, required: true },
   },
