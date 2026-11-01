@@ -5,6 +5,7 @@ import { validate } from '../middleware/validate.js'
 import { HttpError, asyncHandler } from '../middleware/errorHandler.js'
 import { checkLimiter } from '../middleware/rateLimiter.js'
 import { performCheck } from '../services/checkPipeline.js'
+import { runTextChecks } from '../services/textChecks.js'
 
 const router = Router()
 
@@ -46,7 +47,7 @@ router.post(
       title: req.body.title,
       contentType,
     })
-    res.json({ draftId: draft._id, claims, manualReview })
+    res.json({ draftId: draft._id, claims, manualReview, textChecks: runTextChecks(text) })
   }),
 )
 

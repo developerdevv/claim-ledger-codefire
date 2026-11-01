@@ -12,6 +12,7 @@ import { nextId } from '../utils/ids.js'
 import { serializeDraft, serializeClaim } from '../utils/serialize.js'
 import { performCheck } from '../services/checkPipeline.js'
 import { Override } from '../models/Override.js'
+import { runTextChecks } from '../services/textChecks.js'
 
 const router = Router()
 
@@ -61,7 +62,11 @@ router.get(
     const draft = await Draft.findById(req.params.id).lean()
     if (!draft) throw new HttpError(404, `Draft ${req.params.id} was not found.`)
     const claims = await Claim.find({ draftId: draft._id }).sort({ seq: 1 }).lean()
-    res.json({ draft: serializeDraft(draft), claims: claims.map(serializeClaim) })
+    res.json({
+      draft: serializeDraft(draft),
+      claims: claims.map(serializeClaim),
+      textChecks: runTextChecks(draft.text),
+    })
   }),
 )
 
@@ -78,7 +83,12 @@ router.post(
       text: draft.text,
       draftId: draft._id,
     })
-    res.json({ draftId: updated._id, claims, manualReview })
+    res.json({
+      draftId: updated._id,
+      claims,
+      manualReview,
+      textChecks: runTextChecks(draft.text),
+    })
   }),
 )
 
