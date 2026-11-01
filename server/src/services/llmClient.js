@@ -10,19 +10,18 @@ import { config } from '../config.js'
  * engine instead, so a missing key/provider outage can never fail /api/check.
  */
 
-const proposalSchema = z
-  .object({
-    text: z.string().trim().min(1),
-    // Deliberately a plain string: the server (verifier.js), not the model,
-    // is the authority on what a verdict means.
-    verdict: z.string().trim().min(1),
-    factId: z.string().trim().min(1).nullable(),
-    excerpt: z.string().nullable(),
-    explanation: z.string(),
-    suggestion: z.string().nullable(),
-    uncertainty: z.enum(['low', 'medium', 'high']).nullable(),
-  })
-  .strict()
+const emptyToNull = (v) => (v === '' || v === undefined ? null : v)
+
+const proposalSchema = z.object({
+  text: z.string().trim().min(1),
+  // Plain string: the server (verifier.js), not the model, decides what a verdict means.
+  verdict: z.string().trim().min(1),
+  factId: z.preprocess(emptyToNull, z.string().trim().min(1).nullable()),
+  excerpt: z.preprocess(emptyToNull, z.string().nullable()),
+  explanation: z.preprocess((v) => v ?? '', z.string()),
+  suggestion: z.preprocess(emptyToNull, z.string().nullable()),
+  uncertainty: z.preprocess(emptyToNull, z.enum(['low', 'medium', 'high']).nullable()),
+})
 
 const proposalsSchema = z.array(proposalSchema).max(50)
 
