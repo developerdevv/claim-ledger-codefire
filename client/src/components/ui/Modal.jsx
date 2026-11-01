@@ -36,6 +36,8 @@ export default function Modal({
   return (
     <dialog
       ref={ref}
+      role="dialog"
+      aria-modal="true"
       aria-labelledby={labelledBy}
       onClose={onClose}
       onClick={(e) => {

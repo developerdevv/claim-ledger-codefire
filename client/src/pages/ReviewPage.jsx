@@ -255,6 +255,51 @@ export default function ReviewPage({ route }) {
       })
   }
 
+  /**
+   * Dismiss a wrong flag. ClaimCard's modal awaits this call: on success the
+   * card updates in place (no page reload) and the modal closes; on failure
+   * the error propagates so the modal can show the server's message.
+   */
+  async function handleDismiss(claim, reason) {
+    const did = claim.draftId ?? draftId
+    if (!did) {
+      throw new Error('This claim is not attached to a saved draft yet — run a check first.')
+    }
+    const updated = await api.dismissClaim(did, claim._id, reason, actorLabel(role))
+    setClaims((list) =>
+      list.map((c) =>
+        c._id === claim._id ? { ...c, ...updated, appliedLocally: c.appliedLocally } : c,
+      ),
+    )
+    toast({
+      kind: 'success',
+      title: 'Flag dismissed',
+      message: `${actorLabel(role)} marked this finding as wrong. The claim stays visible with the reason.`,
+    })
+    return updated
+  }
+
+  /** Undo a dismissal — no confirmation; restores the card in place. */
+  async function handleUndoDismiss(claim) {
+    const did = claim.draftId ?? draftId
+    if (!did) return
+    try {
+      const updated = await api.undoDismiss(did, claim._id)
+      setClaims((list) =>
+        list.map((c) =>
+          c._id === claim._id ? { ...c, ...updated, appliedLocally: c.appliedLocally } : c,
+        ),
+      )
+      toast({ kind: 'success', title: 'Dismissal undone' })
+    } catch (err) {
+      toast({
+        kind: 'error',
+        title: 'Could not undo the dismissal',
+        message: err.message,
+      })
+    }
+  }
+
   function loadSample(draft) {
     if (draftParam === draft._id) loadDraft(draft._id)
     else navigate(`/review?draft=${encodeURIComponent(draft._id)}`)
@@ -313,6 +358,10 @@ export default function ReviewPage({ route }) {
   /* --------------------------------- derived -------------------------------- */
 
   const counts = useMemo(() => (hasResults ? countVerdicts(claims) : null), [claims, hasResults])
+  const dismissedCount = useMemo(
+    () => (hasResults ? claims.filter((c) => c.dismissal).length : 0),
+    [claims, hasResults],
+  )
   const words = wordCount(text)
   const hasContent = text.trim().length > 0
   const previousDecisions = useMemo(
@@ -538,6 +587,12 @@ export default function ReviewPage({ route }) {
                       </span>
                     )
                   })}
+                  {dismissedCount > 0 && (
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-line-strong bg-tint px-3 py-1 text-xs font-semibold text-ink-soft">
+                      <Ban size={13} aria-hidden="true" strokeWidth={2.2} />
+                      {dismissedCount} dismissed
+                    </span>
+                  )}
                   <span className="text-xs text-muted">
                     {claims.length} claim{claims.length === 1 ? '' : 's'} · AI-generated, a human
                     decides
@@ -575,8 +630,11 @@ export default function ReviewPage({ route }) {
                         claim={claim}
                         facts={sources.facts}
                         terminology={sources.terminology}
+                        role={role}
                         onApply={handleApply}
                         onCopy={handleCopy}
+                        onDismiss={handleDismiss}
+                        onUndoDismiss={handleUndoDismiss}
                         busy={checking}
                       />
                     </li>

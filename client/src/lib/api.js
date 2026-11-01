@@ -113,6 +113,16 @@ const httpAdapter = {
       method: 'PATCH',
       body: payload,
     }),
+  dismissClaim: (draftId, claimId, payload) =>
+    request(
+      `/api/drafts/${encodeURIComponent(draftId)}/claims/${encodeURIComponent(claimId)}/dismiss`,
+      { method: 'PATCH', body: payload },
+    ),
+  undoDismiss: (draftId, claimId) =>
+    request(
+      `/api/drafts/${encodeURIComponent(draftId)}/claims/${encodeURIComponent(claimId)}/dismiss`,
+      { method: 'DELETE' },
+    ),
   getImpact: () => request('/api/impact'),
   getHistory: () => request('/api/history'),
   resetDemo: () => request('/api/demo/reset', { method: 'POST' }),
@@ -144,7 +154,17 @@ function pickFact(value) {
   return value.fact && typeof value.fact === 'object' ? value.fact : value
 }
 
-/** Lock the claim shape: { _id, draftId, text, verdict, factId, excerpt, explanation, suggestion } */
+/** A claim's dismissal record: { reason, actor, at } — null when not dismissed. */
+function normDismissal(raw) {
+  if (!raw || typeof raw !== 'object') return null
+  return {
+    reason: String(raw.reason ?? ''),
+    actor: String(raw.actor ?? ''),
+    at: raw.at ?? null,
+  }
+}
+
+/** Lock the claim shape: { _id, draftId, text, verdict, factId, excerpt, explanation, suggestion, dismissal } */
 export function normalizeClaim(raw, index = 0) {
   const c = raw && typeof raw === 'object' ? raw : {}
   const verdictRaw = String(c.verdict ?? '').toLowerCase().trim()
@@ -159,6 +179,8 @@ export function normalizeClaim(raw, index = 0) {
     explanation: c.explanation ?? c.reason ?? '',
     suggestion: c.suggestion ?? c.rewrite ?? null,
     sourceType: c.sourceType ?? null,
+    // Reviewer dismissal: { reason, actor, at } — null when not dismissed.
+    dismissal: normDismissal(c.dismissal),
     // Locally-applied rewrite marker (never sent to the backend).
     appliedLocally: false,
   }
@@ -264,6 +286,28 @@ export async function decideDraft(id, payload) {
   const adapter = await getAdapter()
   const res = await adapter.decideDraft(id, payload)
   return pickDraft(res) ?? null
+}
+
+/**
+ * PATCH /api/drafts/:draftId/claims/:claimId/dismiss
+ * Body: { reason: 3–300 chars, actor } → the claim with dismissal { reason, actor, at }.
+ * Only flagged (non-verified) claims can be dismissed; repeating a dismiss is
+ * safe and changes nothing. The actor is the current demo role name, like the
+ * other mutating calls.
+ */
+export async function dismissClaim(draftId, claimId, reason, actor) {
+  const adapter = await getAdapter()
+  const res = await adapter.dismissClaim(draftId, claimId, {
+    reason: String(reason ?? ''),
+    actor: actor || 'Reviewer (demo)',
+  })
+  return normalizeClaim(res)
+}
+
+/** DELETE /api/drafts/:draftId/claims/:claimId/dismiss → the claim, dismissal: null */
+export async function undoDismiss(draftId, claimId) {
+  const adapter = await getAdapter()
+  return normalizeClaim(await adapter.undoDismiss(draftId, claimId))
 }
 
 /** GET /api/impact → impact entry[] (newest first) */

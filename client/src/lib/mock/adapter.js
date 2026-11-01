@@ -105,7 +105,12 @@ export function createMockAdapter() {
     for (const draft of store.drafts) {
       const { claims } = runCheck(draft.text, store)
       for (const claim of claims) {
-        store.claims.push({ ...claim, _id: nextId('C', 'claim'), draftId: draft._id })
+        store.claims.push({
+          ...claim,
+          _id: nextId('C', 'claim'),
+          draftId: draft._id,
+          dismissal: null,
+        })
       }
     }
   }
@@ -257,6 +262,7 @@ export function createMockAdapter() {
         ...c,
         _id: nextId('C', 'claim'),
         draftId: draft._id,
+        dismissal: null,
       }))
       store.claims.push(...stored)
 
@@ -327,6 +333,53 @@ export function createMockAdapter() {
       })
 
       return clone(draft)
+    },
+
+    /**
+     * PATCH …/claims/:claimId/dismiss — same rules and exact error messages as
+     * the real backend: reason 3–300 chars, only flagged (non-verified) claims,
+     * 404 when the claim is not on that draft. Dismissing an already-dismissed
+     * claim is safe and changes nothing.
+     */
+    async dismissClaim(draftId, claimId, payload) {
+      await wait()
+      const reason = String(payload?.reason ?? '').trim()
+      if (reason.length < 3) {
+        throw new ApiError('A reason of at least 3 characters is required.', { status: 400 })
+      }
+      if (reason.length > 300) {
+        throw new ApiError('The reason must be 300 characters or fewer.', { status: 400 })
+      }
+      const claim = store.claims.find((c) => c._id === claimId && c.draftId === draftId)
+      if (!claim) {
+        throw new ApiError(`Claim ${claimId} was not found on draft ${draftId}.`, {
+          status: 404,
+        })
+      }
+      if (claim.verdict === 'verified') {
+        throw new ApiError('Only flagged claims can be dismissed.', { status: 400 })
+      }
+      if (!claim.dismissal) {
+        claim.dismissal = {
+          reason,
+          actor: payload?.actor || 'Reviewer (demo)',
+          at: nowIso(),
+        }
+      }
+      return clone(claim)
+    },
+
+    /** DELETE …/claims/:claimId/dismiss — clears the dismissal; undo asks no confirmation. */
+    async undoDismiss(draftId, claimId) {
+      await wait()
+      const claim = store.claims.find((c) => c._id === claimId && c.draftId === draftId)
+      if (!claim) {
+        throw new ApiError(`Claim ${claimId} was not found on draft ${draftId}.`, {
+          status: 404,
+        })
+      }
+      claim.dismissal = null
+      return clone(claim)
     },
 
     async getImpact() {
