@@ -14,6 +14,7 @@ import draftsRouter from './routes/drafts.js'
 import impactRouter from './routes/impact.js'
 import historyRouter from './routes/history.js'
 import demoRouter from './routes/demo.js'
+import guidelineHealthRouter from './routes/guidelineHealth.js'
 
 const app = express()
 
@@ -54,6 +55,7 @@ app.use('/api/drafts', draftsRouter)
 app.use('/api/impact', impactRouter)
 app.use('/api/history', historyRouter)
 app.use('/api/demo', demoRouter)
+app.use('/api/guideline-health', guidelineHealthRouter)
 
 app.use(notFoundHandler)
 app.use(errorHandler)
