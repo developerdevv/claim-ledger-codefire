@@ -9,7 +9,7 @@
 
 import { ApiError } from '../errors'
 import { createSeed, terminologyText } from './seed'
-import { runCheck } from './engine'
+import { runCheck, runTextChecks } from './engine'
 
 const LATENCY_MIN = 160
 const LATENCY_MAX = 420
@@ -26,6 +26,42 @@ function startOfToday() {
   const d = new Date()
   d.setHours(0, 0, 0, 0)
   return d
+}
+
+/**
+ * Curated wording/readability samples for the seeded drafts, so the demo
+ * shows real findings from t=0 (D-2 carries two; D-1 and D-3 have none).
+ * An item is only returned while its exact excerpt is still present in the
+ * draft text — editing that sentence away removes the finding, exactly like
+ * the real backend recomputing on recheck. Shape matches the contract:
+ * { ruleId, kind, excerpt, message, suggestion }.
+ */
+const TEXT_CHECK_SAMPLES = {
+  'D-2': [
+    {
+      ruleId: 'R-1',
+      kind: 'readability',
+      excerpt: 'Enjoy free shipping on all orders above ₹299 this month only.',
+      message:
+        'The offer, the threshold and the deadline sit in one line — the “this month only” condition is easy to miss.',
+      suggestion: 'Split it: “Free shipping on orders above ₹299. This month only.”',
+    },
+    {
+      ruleId: 'A-3',
+      kind: 'accessibility',
+      excerpt: 'Every kurta in this collection is woven from 100% organic cotton.',
+      message:
+        '“Kurta” may be unfamiliar to readers outside South Asia; plain-language guidance says to gloss unfamiliar terms on first use.',
+      suggestion: 'Add a short gloss: “kurta (a long, loose collarless shirt)”.',
+    },
+  ],
+}
+
+/** Curated samples (while their excerpt still matches) + computed rule hits, capped at 20. */
+function textChecksFor(draftId, text) {
+  const body = String(text ?? '')
+  const curated = (TEXT_CHECK_SAMPLES[draftId] ?? []).filter((c) => body.includes(c.excerpt))
+  return [...curated, ...runTextChecks(body)].slice(0, 20)
 }
 
 export function createMockAdapter() {
@@ -266,7 +302,12 @@ export function createMockAdapter() {
       }))
       store.claims.push(...stored)
 
-      return { draftId: draft._id, claims: clone(stored), manualReview }
+      return {
+        draftId: draft._id,
+        claims: clone(stored),
+        manualReview,
+        textChecks: manualReview ? [] : clone(textChecksFor(draft._id, text)),
+      }
     },
 
     async listDrafts() {
@@ -278,7 +319,11 @@ export function createMockAdapter() {
       await wait()
       const draft = findDraft(id)
       if (!draft) throw new ApiError(`Draft ${id} was not found.`, { status: 404 })
-      return { draft: clone(draft), claims: clone(claimsForDraft(id)) }
+      return {
+        draft: clone(draft),
+        claims: clone(claimsForDraft(id)),
+        textChecks: clone(textChecksFor(id, draft.text)),
+      }
     },
 
     async createDraft(payload) {

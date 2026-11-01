@@ -36,6 +36,7 @@ import {
 import { useToast } from '../components/ui/Toast'
 import ClaimCard from '../components/review/ClaimCard'
 import DecisionDialog, { DECISION_META } from '../components/review/DecisionDialog'
+import TextChecksSection from '../components/review/TextChecksSection'
 
 const CONTENT_TYPES = [
   'Instagram caption',
@@ -63,6 +64,9 @@ export default function ReviewPage({ route }) {
   const [decisions, setDecisions] = useState([])
   const [claims, setClaims] = useState(null) // null = nothing checked yet
   const [manualReview, setManualReview] = useState(false)
+  // Wording/readability findings (never mixed with claims). null = no check
+  // has run yet, so the section (and its empty line) stays hidden.
+  const [textChecks, setTextChecks] = useState(null)
   const [checkedText, setCheckedText] = useState(null)
   const [lastCheckedAt, setLastCheckedAt] = useState(null)
   const [checking, setChecking] = useState(false)
@@ -128,7 +132,7 @@ export default function ReviewPage({ route }) {
     setGoneNotice(false)
     api
       .getDraft(id)
-      .then(({ draft, claims: savedClaims }) => {
+      .then(({ draft, claims: savedClaims, textChecks: savedTextChecks }) => {
         if (!alive || !draft) return
         setTitle(draft.title || '')
         setContentType(draft.contentType || 'Other')
@@ -140,6 +144,7 @@ export default function ReviewPage({ route }) {
         setDecisions(draft.decisions ?? [])
         setClaims(savedClaims)
         setManualReview(false)
+        setTextChecks(savedTextChecks ?? [])
         setCheckedText(draft.text || '')
         setLastCheckedAt(draft.updatedAt ?? null)
         setCheckError(null)
@@ -155,6 +160,7 @@ export default function ReviewPage({ route }) {
         setCheckedText(null)
         setLastCheckedAt(null)
         setManualReview(false)
+        setTextChecks(null)
         draftIdRef.current = null
         setDraftId(null)
         setDraftStatus(null)
@@ -213,6 +219,7 @@ export default function ReviewPage({ route }) {
     setDecisions([])
     setClaims(null)
     setManualReview(false)
+    setTextChecks(null)
     setCheckedText(null)
     setLastCheckedAt(null)
     setCheckError(null)
@@ -288,6 +295,7 @@ export default function ReviewPage({ route }) {
       }
       setClaims(res.claims)
       setManualReview(res.manualReview)
+      setTextChecks(res.textChecks ?? [])
       setCheckedText(text)
       setLastCheckedAt(new Date().toISOString())
       loadSamples()
@@ -411,6 +419,7 @@ export default function ReviewPage({ route }) {
     setDecisions([])
     setClaims(null)
     setManualReview(false)
+    setTextChecks(null)
     setCheckedText(null)
     setLastCheckedAt(null)
     setCheckError(null)
@@ -467,7 +476,7 @@ export default function ReviewPage({ route }) {
   /* ---------------------------------- render --------------------------------- */
 
   return (
-    <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+    <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
       {/* ------------------------------ LEFT: composer ----------------------------- */}
       <div className="space-y-5">
         <section aria-labelledby="draft-editor-heading" className="rounded-xl border border-line bg-surface shadow-[0_1px_2px_rgba(27,34,54,0.05)]">
@@ -751,6 +760,10 @@ export default function ReviewPage({ route }) {
             )}
           </div>
         </section>
+
+        {/* Wording & readability checks — separate from claims, never counted
+            in the claim totals. Shown once a check has run or a draft opened. */}
+        {textChecks !== null && <TextChecksSection checks={textChecks} />}
 
         {/* --------------------------- reviewer decisions --------------------------- */}
         {hasResults && draftId && (

@@ -165,6 +165,33 @@ function normDismissal(raw) {
   }
 }
 
+/**
+ * One wording/readability finding: { ruleId, kind, excerpt, message, suggestion }.
+ * These are NOT claims — they never mix with verdicts or claim totals.
+ */
+export function normalizeTextCheck(raw, index = 0) {
+  const t = raw && typeof raw === 'object' ? raw : {}
+  const ruleId = String(t.ruleId ?? t.rule ?? `rule-${index + 1}`)
+  const kindRaw = String(t.kind ?? '').toLowerCase()
+  return {
+    ruleId,
+    kind:
+      kindRaw === 'readability' || kindRaw === 'accessibility'
+        ? kindRaw
+        : ruleId.toUpperCase().startsWith('R')
+          ? 'readability'
+          : 'accessibility',
+    excerpt: String(t.excerpt ?? t.quote ?? ''),
+    message: String(t.message ?? t.text ?? ''),
+    suggestion: String(t.suggestion ?? t.fix ?? ''),
+  }
+}
+
+/** Defensive list parse: a missing field is an empty list; capped at the contract's 20. */
+function normalizeTextChecks(raw) {
+  return asArray(raw).map(normalizeTextCheck).slice(0, 20)
+}
+
 /** Lock the claim shape: { _id, draftId, text, verdict, factId, excerpt, explanation, suggestion, dismissal } */
 export function normalizeClaim(raw, index = 0) {
   const c = raw && typeof raw === 'object' ? raw : {}
@@ -291,7 +318,11 @@ export async function getGuidelineHealth() {
   }
 }
 
-/** POST /api/check → { claims: claim[], manualReview: boolean, draftId? } */
+/**
+ * POST /api/check → { claims: claim[], manualReview: boolean, draftId?,
+ * textChecks: textCheck[] }. A missing textChecks field (older responses) is
+ * treated as an empty list.
+ */
 export async function checkContent(payload) {
   const adapter = await getAdapter()
   const res = (await adapter.checkContent(payload)) ?? {}
@@ -299,7 +330,12 @@ export async function checkContent(payload) {
   const draftId = res.draftId ?? claims.find((c) => c.draftId)?.draftId ?? null
   // Make sure every claim carries the draft it belongs to (locked shape).
   if (draftId) for (const c of claims) if (!c.draftId) c.draftId = draftId
-  return { claims, manualReview: Boolean(res.manualReview), draftId }
+  return {
+    claims,
+    manualReview: Boolean(res.manualReview),
+    draftId,
+    textChecks: normalizeTextChecks(res.textChecks),
+  }
 }
 
 /** → draft[] */
@@ -308,7 +344,7 @@ export async function listDrafts() {
   return asArray(await adapter.listDrafts(), 'drafts').map((d) => pickDraft(d) ?? d)
 }
 
-/** → { draft, claims: claim[] } */
+/** → { draft, claims: claim[], textChecks: textCheck[] } (missing field → []) */
 export async function getDraft(id) {
   const adapter = await getAdapter()
   const res = (await adapter.getDraft(id)) ?? {}
@@ -316,6 +352,7 @@ export async function getDraft(id) {
   return {
     draft,
     claims: asArray(res?.claims ?? draft?.claims).map(normalizeClaim),
+    textChecks: normalizeTextChecks(res?.textChecks ?? draft?.textChecks),
   }
 }
 

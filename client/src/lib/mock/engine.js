@@ -361,3 +361,108 @@ export function runCheck(text, store) {
 
   return { claims, manualReview: false }
 }
+
+/* -------------------------------------------------------------------------- */
+/* Wording & readability rules (A-1 … A-4, R-1).                              */
+/*                                                                            */
+/* These are NOT claim verdicts — they never mix with verified/conflicts/     */
+/* unsupported/manual and are never counted in claim totals. Deterministic    */
+/* per-sentence rules over the draft text; the adapter merges them with       */
+/* curated samples for the seeded drafts and caps the list at 20.             */
+/* -------------------------------------------------------------------------- */
+
+const ABBREVIATIONS = {
+  IST: 'Indian Standard Time',
+  COD: 'cash on delivery',
+  EMI: 'easy monthly instalments',
+  GOTS: 'Global Organic Textile Standard',
+  SKU: 'stock keeping unit',
+  FAQ: 'frequently asked questions',
+  'T&C': 'terms and conditions',
+}
+
+/**
+ * Run the wording/readability rules over a draft's text.
+ * @returns {{ ruleId, kind, excerpt, message, suggestion }[]}
+ */
+export function runTextChecks(text) {
+  const trimmed = String(text || '').trim()
+  if (!trimmed) return []
+  const out = []
+  const sentences = splitSentences(trimmed)
+
+  for (const sentence of sentences) {
+    // A-1: bursts of ALL CAPS (three or more capitalised words in a row).
+    const caps = sentence.match(/\b[A-Z]{2,}(?:\s+[A-Z]{2,}){2,}\b/)
+    if (caps) {
+      out.push({
+        ruleId: 'A-1',
+        kind: 'accessibility',
+        excerpt: caps[0],
+        message:
+          'Long stretches of ALL CAPS are spelled out letter-by-letter by some screen readers, and read as shouting.',
+        suggestion: `Rewrite in sentence case: “${caps[0][0] + caps[0].slice(1).toLowerCase()}”.`,
+      })
+    }
+
+    // A-2: vague link or button wording.
+    const vague = sentence.match(/\b(?:click|tap)\s+here\b|\blearn more\b/i)
+    if (vague) {
+      out.push({
+        ruleId: 'A-2',
+        kind: 'accessibility',
+        excerpt: vague[0],
+        message:
+          'Vague link text gives screen-reader users no idea of the destination when links are listed out of context.',
+        suggestion:
+          'Name the destination in the link, for example “See the delivery terms” instead of a bare call to action.',
+      })
+    }
+
+    // A-3: abbreviation that is never expanded.
+    for (const [abbr, expansion] of Object.entries(ABBREVIATIONS)) {
+      const m = sentence.match(new RegExp(`\\b${abbr.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`))
+      if (m) {
+        out.push({
+          ruleId: 'A-3',
+          kind: 'accessibility',
+          excerpt: m[0],
+          message: `“${m[0]}” is an abbreviation that not every reader will know.`,
+          suggestion: `Expand it on first use, e.g. “${m[0]} (${expansion})”.`,
+        })
+      }
+    }
+
+    // A-4: exclamation marks piling up in one sentence.
+    const bangs = sentence.match(/!/g)
+    if (bangs && bangs.length >= 2) {
+      const first = sentence.indexOf('!')
+      const cleaned = sentence
+        .split('')
+        .filter((ch, i) => ch !== '!' || i === first)
+        .join('')
+      out.push({
+        ruleId: 'A-4',
+        kind: 'accessibility',
+        excerpt: sentence,
+        message: `${bangs.length} exclamation marks in one sentence — screen readers announce each one, and the tone oversells.`,
+        suggestion: `Keep at most one: “${cleaned}”.`,
+      })
+    }
+
+    // R-1: sentence too long to read in one breath.
+    const words = sentence.split(/\s+/).filter(Boolean).length
+    if (words >= 22) {
+      out.push({
+        ruleId: 'R-1',
+        kind: 'readability',
+        excerpt: sentence,
+        message: `This sentence runs to ${words} words — most readers lose the thread after about 20.`,
+        suggestion:
+          'Split it into two sentences: the offer in one, the condition or detail in the other.',
+      })
+    }
+  }
+
+  return out.slice(0, 20)
+}
