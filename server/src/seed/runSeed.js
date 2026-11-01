@@ -8,6 +8,7 @@ import { Impact } from '../models/Impact.js'
 import { Counter } from '../models/Counter.js'
 import { nextId } from '../utils/ids.js'
 import { derivedStatus } from '../services/factStatus.js'
+import { Override } from '../models/Override.js'
 import { runCheck } from '../services/rulesEngine.js'
 import {
   seedFacts,
@@ -120,6 +121,7 @@ export async function resetDemoData() {
     Draft.deleteMany({ brand: DEMO_BRAND }),
     Claim.deleteMany({ brand: DEMO_BRAND }),
     Revision.deleteMany({ brand: DEMO_BRAND }),
+    Override.deleteMany({ brand: DEMO_BRAND }),
     Impact.deleteMany({ brand: DEMO_BRAND }),
     Counter.deleteMany({ brand: DEMO_BRAND }),
   ])
