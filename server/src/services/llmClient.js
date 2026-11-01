@@ -20,7 +20,10 @@ const proposalSchema = z.object({
   excerpt: z.preprocess(emptyToNull, z.string().nullable()),
   explanation: z.preprocess((v) => v ?? '', z.string()),
   suggestion: z.preprocess(emptyToNull, z.string().nullable()),
-  uncertainty: z.preprocess(emptyToNull, z.enum(['low', 'medium', 'high']).nullable()),
+    uncertainty: z.preprocess(
+    (v) => (typeof v === 'string' && ['low', 'medium', 'high'].includes(v.toLowerCase()) ? v.toLowerCase() : null),
+    z.enum(['low', 'medium', 'high']).nullable(),
+  ),
 })
 
 const proposalsSchema = z.array(proposalSchema).max(50)
