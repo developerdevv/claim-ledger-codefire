@@ -11,6 +11,7 @@ import { checkLimiter } from '../middleware/rateLimiter.js'
 import { nextId } from '../utils/ids.js'
 import { serializeDraft, serializeClaim } from '../utils/serialize.js'
 import { performCheck } from '../services/checkPipeline.js'
+import { Override } from '../models/Override.js'
 
 const router = Router()
 
@@ -130,6 +131,74 @@ router.patch(
     })
 
     res.json(serializeDraft(draft.toObject()))
+  }),
+)
+
+const dismissSchema = z.object({
+  reason: z
+    .string()
+    .trim()
+    .min(3, 'A reason of at least 3 characters is required.')
+    .max(300, 'The reason must be 300 characters or fewer.'),
+  actor: z.string().trim().max(80).optional(),
+})
+
+// PATCH /api/drafts/:id/claims/:claimId/dismiss: a reviewer says this flag is wrong.
+// Idempotent: dismissing twice changes nothing and never double counts.
+router.patch(
+  '/:id/claims/:claimId/dismiss',
+  validate(dismissSchema),
+  asyncHandler(async (req, res) => {
+    const claim = await Claim.findOne({ _id: req.params.claimId, draftId: req.params.id })
+    if (!claim) {
+      throw new HttpError(404, `Claim ${req.params.claimId} was not found on draft ${req.params.id}.`)
+    }
+    if (claim.verdict === 'verified') {
+      throw new HttpError(400, 'Only flagged claims can be dismissed.')
+    }
+    if (!claim.dismissal) {
+      const actor = req.body.actor || 'Reviewer (demo)'
+      const at = new Date()
+      const { id, seq } = await nextId('O', 'override')
+      try {
+        await Override.create({
+          _id: id,
+          seq,
+          brand: DEMO_BRAND,
+          claimId: claim._id,
+          draftId: claim.draftId,
+          claimText: claim.text,
+          verdict: claim.verdict,
+          sourceId: claim.factId ?? null,
+          sourceType: claim.sourceType ?? null,
+          reason: req.body.reason,
+          actor,
+          at,
+        })
+      } catch (err) {
+        if (err?.code !== 11000) throw err // already logged by a parallel request
+      }
+      claim.dismissal = { reason: req.body.reason, actor, at }
+      await claim.save()
+    }
+    res.json(serializeClaim(claim.toObject()))
+  }),
+)
+
+// DELETE /api/drafts/:id/claims/:claimId/dismiss: undo a dismissal.
+router.delete(
+  '/:id/claims/:claimId/dismiss',
+  asyncHandler(async (req, res) => {
+    const claim = await Claim.findOne({ _id: req.params.claimId, draftId: req.params.id })
+    if (!claim) {
+      throw new HttpError(404, `Claim ${req.params.claimId} was not found on draft ${req.params.id}.`)
+    }
+    if (claim.dismissal) {
+      claim.dismissal = null
+      await claim.save()
+    }
+    await Override.deleteOne({ claimId: claim._id })
+    res.json(serializeClaim(claim.toObject()))
   }),
 )
 
