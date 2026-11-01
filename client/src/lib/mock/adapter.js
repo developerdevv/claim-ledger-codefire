@@ -64,6 +64,18 @@ function textChecksFor(draftId, text) {
   return [...curated, ...runTextChecks(body)].slice(0, 20)
 }
 
+/**
+ * Sample text returned by the mock document extractor — about 600 characters
+ * of fictional brochure copy, served as "2 pages". Mentions the demo world's
+ * material/shipping promises so pressing "Check content" afterwards produces
+ * real findings.
+ */
+const PDF_SAMPLE_TEXT = `Weave & Loom — Monsoon Handloom Collection
+
+Every piece in this collection is woven on pit looms by partner artisans in Assam and West Bengal, using cotton spun at our certified facility in Coimbatore. The dyes are low-impact and azo-free, and each finished garment is checked by hand before it is packed.
+
+Care and delivery: machine wash cold on a gentle cycle, or hand wash for extra softness. Line dry in shade so the natural dyes hold their colour. Iron on medium heat. Orders placed before 2 PM IST ship the same working day, and every parcel includes a cloth bag made from loom waste.`
+
 export function createMockAdapter() {
   let store = createSeed()
 
@@ -307,6 +319,38 @@ export function createMockAdapter() {
         claims: clone(stored),
         manualReview,
         textChecks: manualReview ? [] : clone(textChecksFor(draft._id, text)),
+      }
+    },
+
+    /**
+     * Mock document extraction — same contract as POST /api/documents/extract.
+     * Accepts any .pdf and returns ~600 characters of sample text as 2 pages;
+     * a file named "scanned.pdf" fails with 422 so the error state is
+     * testable. Errors carry the friendly server messages the UI shows.
+     */
+    async extractDocument(file) {
+      await wait()
+      if (!file) throw new ApiError('No file was sent.', { status: 400 })
+      const name = String(file.name ?? '')
+      const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(name)
+      if (!isPdf) throw new ApiError('Only PDF files can be imported.', { status: 415 })
+      if (Number(file.size ?? 0) > 5 * 1024 * 1024) {
+        throw new ApiError('That PDF is too large or has too many pages (limit: 5 MB, 30 pages).', {
+          status: 413,
+        })
+      }
+      if (/^scanned\.pdf$/i.test(name.trim())) {
+        throw new ApiError(
+          'We could not read text from this PDF. Scanned image PDFs are not supported. Paste the text instead.',
+          { status: 422 },
+        )
+      }
+      return {
+        filename: name,
+        pages: 2,
+        characters: PDF_SAMPLE_TEXT.length,
+        truncated: false,
+        text: PDF_SAMPLE_TEXT,
       }
     },
 

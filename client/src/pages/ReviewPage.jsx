@@ -37,6 +37,7 @@ import { useToast } from '../components/ui/Toast'
 import ClaimCard from '../components/review/ClaimCard'
 import DecisionDialog, { DECISION_META } from '../components/review/DecisionDialog'
 import TextChecksSection from '../components/review/TextChecksSection'
+import { PdfImportButton, PdfImportStatus, usePdfImport } from '../components/review/PdfImport'
 
 const CONTENT_TYPES = [
   'Instagram caption',
@@ -245,6 +246,20 @@ export default function ReviewPage({ route }) {
     if (draftIdRef.current) return
     if (title.trim() || text.trim()) writeUnsent({ title, contentType, text })
   }, [title, contentType, text])
+
+  /* PDF import (Round 3, F4): extracted text lands in the composer exactly
+     like typed text — the unsent-buffer effect above persists it, the stale-
+     text notice behaves the same, and no check runs until the reviewer
+     presses "Check content". */
+  const pdf = usePdfImport({
+    getHasText: () => text.trim().length > 0,
+    applyImport(res, mode) {
+      setText((prev) =>
+        mode === 'append' && prev.trim() ? `${prev.trimEnd()}\n\n${res.text}` : res.text,
+      )
+      setTitle((prev) => (prev.trim() ? prev : String(res.filename).replace(/\.pdf$/i, '')))
+    },
+  })
 
   /* --------------------------------- actions -------------------------------- */
 
@@ -536,14 +551,22 @@ export default function ReviewPage({ route }) {
               </select>
             </div>
 
-            <div>
-              <div className="flex items-baseline justify-between gap-3">
+            <div
+              {...pdf.dropProps}
+              className={
+                pdf.dragOver ? 'rounded-lg ring-2 ring-navy ring-offset-2 ring-offset-surface' : undefined
+              }
+            >
+              <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
                 <label htmlFor="draft-text" className="block text-sm font-medium text-ink">
                   Content
                 </label>
-                <p aria-live="polite" className="text-xs text-muted tabular-nums">
-                  {words} word{words === 1 ? '' : 's'}
-                </p>
+                <div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-2">
+                  <p aria-live="polite" className="text-xs text-muted tabular-nums">
+                    {words} word{words === 1 ? '' : 's'}
+                  </p>
+                  <PdfImportButton {...pdf} />
+                </div>
               </div>
               <textarea
                 id="draft-text"
@@ -553,6 +576,7 @@ export default function ReviewPage({ route }) {
                 placeholder={'Paste the creator’s draft here, or load one of the sample drafts below.\n\nEvery factual promise — prices, offers, delivery, materials — will be checked against the Brand Vault.'}
                 className="mt-1.5 w-full resize-y rounded-md border border-line-strong bg-surface px-3 py-2.5 text-[15px] leading-relaxed text-ink placeholder:text-muted/70 focus:border-navy focus:outline-none"
               />
+              <PdfImportStatus {...pdf} />
               {dirty && (
                 <p className="mt-2 flex items-start gap-1.5 rounded-md border border-line-strong bg-tint px-3 py-2 text-xs leading-relaxed text-ink-soft">
                   <Info size={13} aria-hidden="true" className="mt-px shrink-0" />

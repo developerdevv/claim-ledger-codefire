@@ -97,6 +97,47 @@ async function request(path, { method = 'GET', body, timeoutMs = 30000 } = {}) {
   return data
 }
 
+/**
+ * Multipart upload helper for POST /api/documents/extract.
+ * Deliberately does NOT set Content-Type — the browser must generate the
+ * multipart boundary itself. Failures throw ApiError with the HTTP status and
+ * the server's message when it sent one (empty message otherwise, so the UI
+ * can apply its own friendly fallback). Network/timeout → status 0.
+ */
+async function uploadRequest(path, file, { timeoutMs = 60000 } = {}) {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+
+  const form = new FormData()
+  form.append('file', file)
+
+  let res
+  try {
+    res = await fetch(BASE + path, { method: 'POST', body: form, signal: controller.signal })
+  } catch (err) {
+    clearTimeout(timer)
+    throw new ApiError('', { status: 0, cause: err })
+  }
+  clearTimeout(timer)
+
+  const text = await res.text()
+  let data = null
+  if (text) {
+    try {
+      data = JSON.parse(text)
+    } catch {
+      data = null // non-JSON body; handled below
+    }
+  }
+
+  if (!res.ok) {
+    const serverMessage = (data && (data.error || data.message)) || ''
+    throw new ApiError(serverMessage, { status: res.status })
+  }
+
+  return data
+}
+
 const httpAdapter = {
   getHealth: () => request('/api/health'),
   listFacts: () => request('/api/facts'),
@@ -106,6 +147,7 @@ const httpAdapter = {
   getGuidelines: () => request('/api/guidelines'),
   getGuidelineHealth: () => request('/api/guideline-health'),
   checkContent: (payload) => request('/api/check', { method: 'POST', body: payload }),
+  extractDocument: (file) => uploadRequest('/api/documents/extract', file),
   listDrafts: () => request('/api/drafts'),
   getDraft: (id) => request(`/api/drafts/${encodeURIComponent(id)}`),
   createDraft: (payload) => request('/api/drafts', { method: 'POST', body: payload }),
@@ -315,6 +357,25 @@ export async function getGuidelineHealth() {
         ? Math.round(total)
         : items.reduce((sum, it) => sum + it.count, 0),
     items,
+  }
+}
+
+/**
+ * POST /api/documents/extract (multipart, one file in the "file" field; PDF
+ * only, 5 MB / 30 pages) → { filename, pages, characters, truncated, text }.
+ * The extracted text is NOT checked automatically — the Review page puts it
+ * in the composer and the reviewer presses "Check content" themselves.
+ */
+export async function extractDocument(file) {
+  const adapter = await getAdapter()
+  const res = (await adapter.extractDocument(file)) ?? {}
+  const text = String(res.text ?? '')
+  return {
+    filename: String(res.filename ?? file?.name ?? ''),
+    pages: Number(res.pages ?? 0) || 0,
+    characters: Number(res.characters ?? text.length) || text.length,
+    truncated: Boolean(res.truncated),
+    text,
   }
 }
 
