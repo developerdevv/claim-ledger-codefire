@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import Shell from './components/layout/Shell'
 import { ToastProvider } from './components/ui/Toast'
+import GuidelineHealthPage from './pages/GuidelineHealthPage'
 import HistoryPage from './pages/HistoryPage'
 import ImpactPage from './pages/ImpactPage'
 import ReviewPage from './pages/ReviewPage'
@@ -13,6 +14,7 @@ const PAGES = {
   '/review': ReviewPage,
   '/vault': VaultPage,
   '/impact': ImpactPage,
+  '/health': GuidelineHealthPage,
   '/history': HistoryPage,
 }
 

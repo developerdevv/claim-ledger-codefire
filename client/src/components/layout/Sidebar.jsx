@@ -1,4 +1,4 @@
-import { ClipboardCheck, Flame, History, Vault, Waypoints } from 'lucide-react'
+import { ClipboardCheck, Flame, HeartPulse, History, Vault, Waypoints } from 'lucide-react'
 import { isMockMode } from '../../lib/api'
 import { Link } from '../../lib/router'
 
@@ -6,6 +6,7 @@ export const NAV = [
   { to: '/review', label: 'Review', Icon: ClipboardCheck },
   { to: '/vault', label: 'Brand Vault', Icon: Vault },
   { to: '/impact', label: 'Impact View', Icon: Waypoints },
+  { to: '/health', label: 'Guideline Health', Icon: HeartPulse },
   { to: '/history', label: 'History', Icon: History },
 ]
 

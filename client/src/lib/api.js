@@ -104,6 +104,7 @@ const httpAdapter = {
   updateFact: (id, payload) =>
     request(`/api/facts/${encodeURIComponent(id)}`, { method: 'PATCH', body: payload }),
   getGuidelines: () => request('/api/guidelines'),
+  getGuidelineHealth: () => request('/api/guideline-health'),
   checkContent: (payload) => request('/api/check', { method: 'POST', body: payload }),
   listDrafts: () => request('/api/drafts'),
   getDraft: (id) => request(`/api/drafts/${encodeURIComponent(id)}`),
@@ -201,6 +202,30 @@ function normalizeImpactEntry(raw, index) {
   }
 }
 
+const HEALTH_VERDICTS = ['conflicts', 'unsupported', 'manual']
+
+/** One row of GET /api/guideline-health — normalised defensively. */
+function normalizeHealthItem(raw) {
+  const it = raw && typeof raw === 'object' ? raw : {}
+  const verdictRaw = String(it.verdict ?? '').toLowerCase().trim()
+  const sourceId = it.sourceId ?? null
+  const sourceType =
+    it.sourceType === 'fact' || it.sourceType === 'terminology' ? it.sourceType : null
+  const count = Number(it.count)
+  const draftCount = Number(it.draftCount)
+  return {
+    sourceId,
+    sourceType: sourceId ? sourceType : null,
+    verdict: HEALTH_VERDICTS.includes(verdictRaw) ? verdictRaw : 'manual',
+    label: String(it.label ?? ''),
+    count: Number.isFinite(count) && count > 0 ? Math.round(count) : 0,
+    draftCount: Number.isFinite(draftCount) && draftCount > 0 ? Math.round(draftCount) : 0,
+    lastAt: it.lastAt ?? null,
+    example: String(it.example ?? ''),
+    reasons: Array.isArray(it.reasons) ? it.reasons.map((r) => String(r)).slice(0, 3) : [],
+  }
+}
+
 /* -------------------------------------------------------------------------- */
 /* Public API — used by pages and components                                   */
 /* -------------------------------------------------------------------------- */
@@ -244,6 +269,25 @@ export async function getGuidelines() {
   return {
     guidelines: asArray(res?.guidelines ?? res, 'items'),
     terminology: asArray(res?.terminology, 'items'),
+  }
+}
+
+/**
+ * GET /api/guideline-health → { totalOverrides, items[] } (items already
+ * sorted, most overridden first). Defensive: missing items → [], missing
+ * numbers → 0, unknown verdict → "manual".
+ */
+export async function getGuidelineHealth() {
+  const adapter = await getAdapter()
+  const res = (await adapter.getGuidelineHealth()) ?? {}
+  const items = asArray(res, 'items', 'entries').map(normalizeHealthItem)
+  const total = Number(res.totalOverrides)
+  return {
+    totalOverrides:
+      Number.isFinite(total) && total > 0
+        ? Math.round(total)
+        : items.reduce((sum, it) => sum + it.count, 0),
+    items,
   }
 }
 

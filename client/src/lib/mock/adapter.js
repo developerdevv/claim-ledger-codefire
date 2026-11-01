@@ -8,7 +8,7 @@
  */
 
 import { ApiError } from '../errors'
-import { createSeed } from './seed'
+import { createSeed, terminologyText } from './seed'
 import { runCheck } from './engine'
 
 const LATENCY_MIN = 160
@@ -380,6 +380,51 @@ export function createMockAdapter() {
       }
       claim.dismissal = null
       return clone(claim)
+    },
+
+    /**
+     * GET /api/guideline-health — computed from the mock's dismissals: group
+     * dismissed claims by source id + verdict, most overridden first (ties
+     * broken by newest). Reset demo data clears it because every claim is
+     * re-seeded with dismissal: null.
+     */
+    async getGuidelineHealth() {
+      await wait()
+      const dismissed = store.claims.filter((c) => c.dismissal)
+      const HEALTH_VERDICTS = ['conflicts', 'unsupported', 'manual']
+
+      const groups = new Map()
+      for (const claim of dismissed) {
+        const verdict = HEALTH_VERDICTS.includes(claim.verdict) ? claim.verdict : 'manual'
+        const key = `${claim.factId ?? 'none'}|${verdict}`
+        if (!groups.has(key)) groups.set(key, [])
+        groups.get(key).push(claim)
+      }
+
+      const items = []
+      for (const claims of groups.values()) {
+        const sample = claims[0]
+        const sourceId = sample.factId ?? null
+        const term = sourceId ? store.terminology.find((t) => t._id === sourceId) : null
+        const fact = sourceId && !term ? findFact(sourceId) : null
+        const newestFirst = [...claims].sort(
+          (a, b) => new Date(b.dismissal.at) - new Date(a.dismissal.at),
+        )
+        items.push({
+          sourceId,
+          sourceType: term ? 'terminology' : fact ? 'fact' : null,
+          verdict: HEALTH_VERDICTS.includes(sample.verdict) ? sample.verdict : 'manual',
+          label: term ? terminologyText(term) : fact ? fact.text : 'No approved source',
+          count: claims.length,
+          draftCount: new Set(claims.map((c) => c.draftId)).size,
+          lastAt: newestFirst[0].dismissal.at,
+          example: newestFirst[0].text,
+          reasons: newestFirst.slice(0, 3).map((c) => c.dismissal.reason),
+        })
+      }
+
+      items.sort((a, b) => b.count - a.count || new Date(b.lastAt) - new Date(a.lastAt))
+      return { totalOverrides: dismissed.length, items }
     },
 
     async getImpact() {
