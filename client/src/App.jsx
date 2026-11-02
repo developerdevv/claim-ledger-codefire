@@ -1,12 +1,12 @@
-import { useEffect } from 'react'
 import Shell from './components/layout/Shell'
 import { ToastProvider } from './components/ui/Toast'
 import GuidelineHealthPage from './pages/GuidelineHealthPage'
 import HistoryPage from './pages/HistoryPage'
 import ImpactPage from './pages/ImpactPage'
+import NotFoundPage from './pages/NotFoundPage'
 import ReviewPage from './pages/ReviewPage'
 import VaultPage from './pages/VaultPage'
-import { navigate, useRoute } from './lib/router'
+import { useRoute } from './lib/router'
 import { DemoProvider } from './state/demo'
 
 const PAGES = {
@@ -21,13 +21,10 @@ const PAGES = {
 function RoutedApp() {
   const route = useRoute()
 
-  // Unknown hash → send the judge home to Review.
-  useEffect(() => {
-    if (!PAGES[route.path]) navigate('/review', { replace: true })
-  }, [route.path])
-
   const path = route.path === '/' ? '/review' : route.path
-  const Page = PAGES[route.path] ?? ReviewPage
+  // Unknown hash → a small "Page not found" with a link back to Review
+  // (Round 3, F6) instead of a silent redirect.
+  const Page = PAGES[route.path] ?? NotFoundPage
 
   return (
     <Shell path={path} key={path}>

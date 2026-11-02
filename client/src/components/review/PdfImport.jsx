@@ -3,6 +3,7 @@ import { CircleCheck, FileUp, Plus, Replace, X } from 'lucide-react'
 import Button from '../ui/Button'
 import { ErrorState } from '../ui/States'
 import { extractDocument } from '../../lib/api'
+import { CHECK_CHAR_LIMIT } from '../../lib/constants'
 
 /**
  * PDF import for the Review composer (Round 3, F4).
@@ -265,9 +266,9 @@ export function PdfImportStatus({
         >
           <CircleCheck size={13} aria-hidden="true" className="mt-px shrink-0" />
           <span className="[overflow-wrap:anywhere]">
-            Imported {notice.pages} page{notice.pages === 1 ? '' : 's'},{' '}
-            {Number(notice.characters).toLocaleString()} characters from {notice.filename}.
-            {notice.truncated ? ' The PDF was long, so only the first part was imported.' : ''}
+            {notice.truncated
+              ? `Imported the first ${CHECK_CHAR_LIMIT.toLocaleString()} of ${Number(notice.characters).toLocaleString()} characters (${notice.pages} pages) from ${notice.filename}. The rest was not imported.`
+              : `Imported ${notice.pages} page${notice.pages === 1 ? '' : 's'}, ${Number(notice.characters).toLocaleString()} characters from ${notice.filename}.`}
           </span>
         </p>
       )}

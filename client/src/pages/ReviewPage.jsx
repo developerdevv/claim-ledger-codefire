@@ -9,9 +9,11 @@ import {
   MessageSquare,
   PenLine,
   ShieldCheck,
+  TriangleAlert,
 } from 'lucide-react'
 import * as api from '../lib/api'
 import { copyToClipboard } from '../lib/clipboard'
+import { CHAR_COUNTER_FROM, CHECK_CHAR_LIMIT } from '../lib/constants'
 import { formatRelative, wordCount } from '../lib/format'
 import { navigate } from '../lib/router'
 import {
@@ -83,6 +85,11 @@ export default function ReviewPage({ route }) {
   const [lastCheckedAt, setLastCheckedAt] = useState(null)
   const [checking, setChecking] = useState(false)
   const [checkError, setCheckError] = useState(null)
+  const [checkInputError, setCheckInputError] = useState(null)
+  // Ref guards: a same-tick double click slips past the state flags because
+  // React has not re-rendered yet (Round 3, F6 item 1).
+  const checkingRef = useRef(false)
+  const decidingRef = useRef(false)
   const [draftLoad, setDraftLoad] = useState({ loading: false, error: null })
 
   /* -------------------------- samples + source lists ------------------------ */
@@ -300,15 +307,14 @@ export default function ReviewPage({ route }) {
   /* --------------------------------- actions -------------------------------- */
 
   async function handleCheck() {
-    if (checking) return
+    if (checking || checkingRef.current) return
     if (!text.trim()) {
-      toast({
-        kind: 'error',
-        title: 'Nothing to check',
-        message: 'Write some draft content or load a sample first.',
-      })
+      // Inline nudge next to the button, no server call (Round 3, F6 item 2).
+      setCheckInputError('Add some text to check.')
       return
     }
+    if (text.length > CHECK_CHAR_LIMIT) return // button is disabled too; belt and braces
+    checkingRef.current = true
     setChecking(true)
     setCheckError(null)
     try {
@@ -368,6 +374,7 @@ export default function ReviewPage({ route }) {
     } catch (err) {
       setCheckError(err)
     } finally {
+      checkingRef.current = false
       setChecking(false)
     }
   }
@@ -481,7 +488,8 @@ export default function ReviewPage({ route }) {
 
   async function handleDecisionSubmit(comment) {
     const action = decisionAction
-    if (!action || !draftId || deciding) return
+    if (!action || !draftId || deciding || decidingRef.current) return
+    decidingRef.current = true
     setDeciding(true)
     try {
       const updated = await api.decideDraft(draftId, {
@@ -508,6 +516,7 @@ export default function ReviewPage({ route }) {
     } catch (err) {
       toast({ kind: 'error', title: 'Decision not saved', message: err.message })
     } finally {
+      decidingRef.current = false
       setDeciding(false)
     }
   }
@@ -519,8 +528,15 @@ export default function ReviewPage({ route }) {
     () => (hasResults ? claims.filter((c) => c.dismissal).length : 0),
     [claims, hasResults],
   )
+  // Inline composer errors clear as soon as the text changes again — typed,
+  // sample loaded or PDF imported (Round 3, F6 item 2).
+  useEffect(() => {
+    setCheckInputError(null)
+  }, [text])
+
   const words = wordCount(text)
   const hasContent = text.trim().length > 0
+  const overLimit = text.length > CHECK_CHAR_LIMIT
   const previousDecisions = useMemo(
     () => [...(decisions ?? [])].sort((a, b) => new Date(b.at) - new Date(a.at)),
     [decisions],
@@ -621,6 +637,12 @@ export default function ReviewPage({ route }) {
                   <p aria-live="polite" className="text-xs text-muted tabular-nums">
                     {words} word{words === 1 ? '' : 's'}
                   </p>
+                  {text.length > CHAR_COUNTER_FROM && (
+                    <p className="text-xs text-muted tabular-nums">
+                      {text.length.toLocaleString()} / {CHECK_CHAR_LIMIT.toLocaleString()}{' '}
+                      characters
+                    </p>
+                  )}
                   <PdfImportButton {...pdf} />
                 </div>
               </div>
@@ -648,9 +670,13 @@ export default function ReviewPage({ route }) {
                 size="lg"
                 icon={FileSearch}
                 busy={checking}
-                disabled={!hasContent}
+                disabled={overLimit}
                 onClick={handleCheck}
-                title={!hasContent ? 'Add some draft content first' : undefined}
+                title={
+                  overLimit
+                    ? `Shorten the text to ${CHECK_CHAR_LIMIT.toLocaleString()} characters or fewer`
+                    : undefined
+                }
               >
                 {checking ? 'Checking…' : hasResults ? 'Re-check content' : 'Check content'}
               </Button>
@@ -660,6 +686,18 @@ export default function ReviewPage({ route }) {
                 </Button>
               )}
             </div>
+
+            {(overLimit || checkInputError) && (
+              <p
+                role="alert"
+                className="flex items-start gap-1.5 rounded-md border border-line-strong bg-tint px-3 py-2 text-xs leading-relaxed text-ink-soft"
+              >
+                <TriangleAlert size={13} aria-hidden="true" className="mt-px shrink-0" />
+                {overLimit
+                  ? `Text is limited to ${CHECK_CHAR_LIMIT.toLocaleString()} characters (you have ${text.length.toLocaleString()})`
+                  : checkInputError}
+              </p>
+            )}
 
             {checkError && (
               <ErrorState

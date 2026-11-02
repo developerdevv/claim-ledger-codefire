@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import Modal from './Modal'
 import Button from './Button'
 
@@ -21,9 +21,13 @@ export default function ConfirmDialog({
 }) {
   const [pending, setPending] = useState(false)
   const [error, setError] = useState(null)
+  // Same-tick double clicks slip past `pending` before React re-renders
+  // (Round 3, F6 item 1).
+  const pendingRef = useRef(false)
 
   async function handleConfirm() {
-    if (pending) return
+    if (pendingRef.current) return
+    pendingRef.current = true
     setPending(true)
     setError(null)
     try {
@@ -31,6 +35,7 @@ export default function ConfirmDialog({
     } catch (err) {
       setError(err?.message || 'The action could not be completed.')
     } finally {
+      pendingRef.current = false
       setPending(false)
     }
   }

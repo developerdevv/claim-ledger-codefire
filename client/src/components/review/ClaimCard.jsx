@@ -66,6 +66,10 @@ export default function ClaimCard({
   const [dismissing, setDismissing] = useState(false)
   const [undoing, setUndoing] = useState(false)
   const reasonRef = useRef(null)
+  // Ref guards: same-tick double clicks slip past the state flags before
+  // React re-renders (Round 3, F6 item 1).
+  const dismissingRef = useRef(false)
+  const undoingRef = useRef(false)
 
   const meta = VERDICT_META[claim.verdict] ?? VERDICT_META.manual
   const source = useMemo(
@@ -94,13 +98,14 @@ export default function ClaimCard({
 
   async function submitDismiss(e) {
     e.preventDefault()
-    if (dismissing) return // a double click must send only one request
+    if (dismissing || dismissingRef.current) return // a double click must send only one request
     const trimmed = reason.trim()
     if (trimmed.length < REASON_MIN) {
       setDismissError('A reason of at least 3 characters is required.')
       reasonRef.current?.focus()
       return
     }
+    dismissingRef.current = true
     setDismissing(true)
     setDismissError(null)
     try {
@@ -110,16 +115,19 @@ export default function ClaimCard({
       // Keep the modal open and show the server's message.
       setDismissError(err?.message || 'Could not dismiss this flag.')
     } finally {
+      dismissingRef.current = false
       setDismissing(false)
     }
   }
 
   async function handleUndo() {
-    if (undoing) return
+    if (undoing || undoingRef.current) return
+    undoingRef.current = true
     setUndoing(true)
     try {
       await onUndoDismiss(claim) // no confirmation; toast handled by the page
     } finally {
+      undoingRef.current = false
       setUndoing(false)
     }
   }

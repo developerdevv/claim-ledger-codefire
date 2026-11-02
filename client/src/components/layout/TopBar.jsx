@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Info, Menu, RotateCcw } from 'lucide-react'
 import * as api from '../../lib/api'
-import { clearLastDraftId } from '../../lib/reviewStore'
+import { clearLastDraftId, clearUnsent } from '../../lib/reviewStore'
 import { useDemo } from '../../state/demo'
 import { useToast } from '../ui/Toast'
 import Button from '../ui/Button'
@@ -18,9 +18,11 @@ export default function TopBar({ title, onOpenDrawer }) {
     setResetting(true)
     try {
       await api.resetDemo()
-      // A reset also forgets the remembered Review draft — seeded drafts are
-      // back, but anything created this session is gone.
+      // A reset also forgets the remembered Review draft and any unsent
+      // composer text — seeded drafts are back, but anything created this
+      // session is gone.
       clearLastDraftId()
+      clearUnsent()
       setConfirmOpen(false)
       bumpRefresh()
       toast({
@@ -79,7 +81,7 @@ export default function TopBar({ title, onOpenDrawer }) {
       <ConfirmDialog
         open={confirmOpen}
         title="Reset demo data?"
-        body="This restores all facts, drafts, decisions and history to the starting state of the demo. Anything you changed in this session will be lost."
+        body="This deletes all drafts, dismissals and Impact entries created during this session and restores the sample data."
         confirmLabel="Reset demo data"
         confirmVariant="dark"
         confirmIcon={RotateCcw}

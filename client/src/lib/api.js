@@ -49,52 +49,114 @@ function getAdapter() {
 /* HTTP adapter                                                                */
 /* -------------------------------------------------------------------------- */
 
-async function request(path, { method = 'GET', body, timeoutMs = 30000 } = {}) {
+/* -------------------------------------------------------------------------- */
+/* "Server waking up" signal (Round 3, F6)                                     */
+/*                                                                            */
+/* Free hosting cold-starts can take almost a minute. Any request still in    */
+/* flight after WAKE_AFTER_MS flips a global flag that the shell renders as   */
+/* a polite live region; it clears when the last slow request settles.        */
+/* -------------------------------------------------------------------------- */
+
+// DEV-only test knob: VITE_WAKE_AFTER_MS lowers the threshold so the notice
+// can be exercised against fast servers. Production always uses 4000 ms.
+const WAKE_AFTER_MS =
+  import.meta.env.DEV && Number(import.meta.env.VITE_WAKE_AFTER_MS) > 0
+    ? Number(import.meta.env.VITE_WAKE_AFTER_MS)
+    : 4000
+
+/** Canonical rate-limit copy (HTTP 429) — the same on every API call. */
+const RATE_LIMIT_MESSAGE = 'Too many requests. Wait a minute and try again.'
+
+let slowInFlight = 0
+const wakingListeners = new Set()
+
+function notifyWaking() {
+  const waking = slowInFlight > 0
+  for (const listener of [...wakingListeners]) listener(waking)
+}
+
+/** Subscribe to the waking flag (useSyncExternalStore-compatible). */
+export function subscribeServerWaking(listener) {
+  wakingListeners.add(listener)
+  return () => {
+    wakingListeners.delete(listener)
+  }
+}
+
+/** Current waking value — getSnapshot for useSyncExternalStore. */
+export function isServerWaking() {
+  return slowInFlight > 0
+}
+
+/** Returns a done() callback; marks the request slow after WAKE_AFTER_MS. */
+function trackSlowRequest() {
+  let marked = false
+  const wakeTimer = setTimeout(() => {
+    marked = true
+    slowInFlight += 1
+    notifyWaking()
+  }, WAKE_AFTER_MS)
+  return () => {
+    clearTimeout(wakeTimer)
+    if (marked) {
+      slowInFlight -= 1
+      notifyWaking()
+    }
+  }
+}
+
+async function request(path, { method = 'GET', body, timeoutMs = 65000 } = {}) {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)
+  const doneSlow = trackSlowRequest()
 
-  let res
   try {
-    res = await fetch(BASE + path, {
-      method,
-      headers: body !== undefined ? { 'Content-Type': 'application/json' } : undefined,
-      body: body !== undefined ? JSON.stringify(body) : undefined,
-      signal: controller.signal,
-    })
-  } catch (err) {
-    clearTimeout(timer)
-    if (err?.name === 'AbortError') {
-      throw new ApiError('The API took too long to respond. Please try again.', {
-        cause: err,
-      })
-    }
-    throw new ApiError(
-      `Cannot reach the Claim Ledger API at ${apiBaseLabel()}. Is the backend running?`,
-      { cause: err },
-    )
-  }
-  clearTimeout(timer)
-
-  if (res.status === 204) return null
-
-  const text = await res.text()
-  let data = null
-  if (text) {
+    let res
     try {
-      data = JSON.parse(text)
-    } catch {
-      data = null // non-JSON body; handled below
+      res = await fetch(BASE + path, {
+        method,
+        headers: body !== undefined ? { 'Content-Type': 'application/json' } : undefined,
+        body: body !== undefined ? JSON.stringify(body) : undefined,
+        signal: controller.signal,
+      })
+    } catch (err) {
+      if (err?.name === 'AbortError') {
+        throw new ApiError('The API took too long to respond. Please try again.', {
+          cause: err,
+        })
+      }
+      throw new ApiError(
+        `Cannot reach the Claim Ledger API at ${apiBaseLabel()}. Is the backend running?`,
+        { cause: err },
+      )
     }
-  }
 
-  if (!res.ok) {
-    const message =
-      (data && (data.error || data.message)) ||
-      `The API request failed (HTTP ${res.status}).`
-    throw new ApiError(message, { status: res.status })
-  }
+    if (res.status === 204) return null
 
-  return data
+    const text = await res.text()
+    let data = null
+    if (text) {
+      try {
+        data = JSON.parse(text)
+      } catch {
+        data = null // non-JSON body; handled below
+      }
+    }
+
+    if (!res.ok) {
+      const message =
+        res.status === 429
+          ? RATE_LIMIT_MESSAGE
+          : (data && (data.error || data.message)) ||
+            `The API request failed (HTTP ${res.status}).`
+      throw new ApiError(message, { status: res.status })
+    }
+
+    return data
+  } finally {
+    clearTimeout(timer)
+    doneSlow()
+  }
 }
 
 /**
@@ -104,38 +166,44 @@ async function request(path, { method = 'GET', body, timeoutMs = 30000 } = {}) {
  * the server's message when it sent one (empty message otherwise, so the UI
  * can apply its own friendly fallback). Network/timeout → status 0.
  */
-async function uploadRequest(path, file, { timeoutMs = 60000 } = {}) {
+async function uploadRequest(path, file, { timeoutMs = 65000 } = {}) {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)
+  const doneSlow = trackSlowRequest()
 
   const form = new FormData()
   form.append('file', file)
 
-  let res
   try {
-    res = await fetch(BASE + path, { method: 'POST', body: form, signal: controller.signal })
-  } catch (err) {
-    clearTimeout(timer)
-    throw new ApiError('', { status: 0, cause: err })
-  }
-  clearTimeout(timer)
-
-  const text = await res.text()
-  let data = null
-  if (text) {
+    let res
     try {
-      data = JSON.parse(text)
-    } catch {
-      data = null // non-JSON body; handled below
+      res = await fetch(BASE + path, { method: 'POST', body: form, signal: controller.signal })
+    } catch (err) {
+      throw new ApiError('', { status: 0, cause: err })
     }
-  }
 
-  if (!res.ok) {
-    const serverMessage = (data && (data.error || data.message)) || ''
-    throw new ApiError(serverMessage, { status: res.status })
-  }
+    const text = await res.text()
+    let data = null
+    if (text) {
+      try {
+        data = JSON.parse(text)
+      } catch {
+        data = null // non-JSON body; handled below
+      }
+    }
 
-  return data
+    if (!res.ok) {
+      const serverMessage = (data && (data.error || data.message)) || ''
+      throw new ApiError(res.status === 429 ? RATE_LIMIT_MESSAGE : serverMessage, {
+        status: res.status,
+      })
+    }
+
+    return data
+  } finally {
+    clearTimeout(timer)
+    doneSlow()
+  }
 }
 
 const httpAdapter = {

@@ -117,3 +117,12 @@
   color: var(--color-ink-soft);
   white-space: nowrap;
 }
+
+/* Touch comfort (Round 3, F6): on narrow screens every button is at least
+   40px tall, comfortably above the 44px-wide-but-short icon-button problem
+   and easy to hit with a thumb. */
+@media (max-width: 640px) {
+  button {
+    min-height: 40px;
+  }
+}

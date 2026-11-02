@@ -23,12 +23,28 @@ export default function Modal({
   labelledBy = 'modal-title',
 }) {
   const ref = useRef(null)
+  const openerRef = useRef(null)
 
   useEffect(() => {
     const dialog = ref.current
     if (!dialog) return
-    if (open && !dialog.open) dialog.showModal()
+    if (open && !dialog.open) {
+      // Remember who opened us — when `open` flips false the dialog unmounts
+      // and focus would drop to <body>; the second effect puts it back
+      // (Round 3, F6). The native Escape/close() path restores focus itself.
+      openerRef.current = document.activeElement
+      dialog.showModal()
+    }
     if (!open && dialog.open) dialog.close()
+  }, [open])
+
+  // Restore focus to the opener after a programmatic close. Focusing the
+  // same element twice (Escape path) is harmless.
+  useEffect(() => {
+    if (open) return
+    const opener = openerRef.current
+    openerRef.current = null
+    if (opener && document.contains(opener)) opener.focus()
   }, [open])
 
   if (!open) return null

@@ -3,6 +3,7 @@ import { X } from 'lucide-react'
 import * as api from '../../lib/api'
 import { useDemo } from '../../state/demo'
 import MockBanner from '../ui/MockBanner'
+import ServerWakingNotice from '../ui/ServerWakingNotice'
 import Sidebar, { NAV } from './Sidebar'
 import TopBar from './TopBar'
 
@@ -15,8 +16,17 @@ export default function Shell({ path, children }) {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [impactCount, setImpactCount] = useState(0)
   const closeButtonRef = useRef(null)
+  const drawerRef = useRef(null)
 
-  const navItem = NAV.find((item) => item.to === path) ?? NAV[0]
+  // Unknown routes keep their raw path here — the label falls back to
+  // "Page not found" (Round 3, F6).
+  const navItem = NAV.find((item) => item.to === path)
+  const pageTitle = navItem?.label ?? 'Page not found'
+
+  // One clear title per screen for tab-switching judges (Round 3, F6).
+  useEffect(() => {
+    document.title = `${pageTitle} - Claim Ledger`
+  }, [pageTitle])
 
   // Badge count for Impact View — always from the API, never hardcoded.
   useEffect(() => {
@@ -34,15 +44,45 @@ export default function Shell({ path, children }) {
     }
   }, [refreshKey, path])
 
-  // Close the drawer with Escape; focus the close button when it opens.
+  // Drawer: Escape closes, Tab cycles within the dialog only, the close
+  // button takes focus on open, and focus returns to the menu button that
+  // opened it (Round 3, F6).
   useEffect(() => {
-    if (!drawerOpen) return
+    if (!drawerOpen) return undefined
+    const opener = document.activeElement
     closeButtonRef.current?.focus()
     const onKey = (e) => {
-      if (e.key === 'Escape') setDrawerOpen(false)
+      if (e.key === 'Escape') {
+        setDrawerOpen(false)
+        return
+      }
+      if (e.key !== 'Tab') return
+      const dialog = drawerRef.current
+      if (!dialog) return
+      const focusables = [
+        ...dialog.querySelectorAll(
+          'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ),
+      ]
+      if (focusables.length === 0) return
+      const first = focusables[0]
+      const last = focusables[focusables.length - 1]
+      if (!dialog.contains(document.activeElement)) {
+        e.preventDefault()
+        first.focus()
+      } else if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault()
+        last.focus()
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault()
+        first.focus()
+      }
     }
     window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      if (opener && document.contains(opener)) opener.focus()
+    }
   }, [drawerOpen])
 
   return (
@@ -61,8 +101,9 @@ export default function Shell({ path, children }) {
         </aside>
 
         <div className="flex min-w-0 flex-col">
-          <TopBar title={navItem.label} onOpenDrawer={() => setDrawerOpen(true)} />
+          <TopBar title={pageTitle} onOpenDrawer={() => setDrawerOpen(true)} />
           <MockBanner />
+          <ServerWakingNotice />
           <main id="main" className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 lg:px-8">
             {children}
           </main>
@@ -78,6 +119,7 @@ export default function Shell({ path, children }) {
             aria-hidden="true"
           />
           <div
+            ref={drawerRef}
             role="dialog"
             aria-modal="true"
             aria-label="Navigation"

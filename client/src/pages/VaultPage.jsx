@@ -304,8 +304,9 @@ export default function VaultPage() {
 
         {!error && filteredFacts.length > 0 && (
           <>
-            {/* Desktop table */}
-            <div className="hidden overflow-hidden rounded-xl border border-line bg-surface shadow-[0_1px_2px_rgba(27,34,54,0.05)] md:block">
+            {/* Desktop table — scrolls horizontally when the window is too
+                narrow for all columns instead of clipping them (F6 item 10). */}
+            <div className="hidden overflow-x-auto rounded-xl border border-line bg-surface shadow-[0_1px_2px_rgba(27,34,54,0.05)] md:block">
               <table className="w-full border-collapse text-left">
                 <caption className="sr-only">
                   Approved facts: ID, text, owner, verification and expiry dates, status

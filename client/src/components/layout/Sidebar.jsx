@@ -1,5 +1,4 @@
 import { ClipboardCheck, Flame, HeartPulse, History, Vault, Waypoints } from 'lucide-react'
-import { isMockMode } from '../../lib/api'
 import { Link } from '../../lib/router'
 
 export const NAV = [
@@ -84,10 +83,7 @@ export default function Sidebar({ currentPath, impactCount = 0, onNavigate }) {
 
       <div className="space-y-1.5 border-t border-line px-5 py-4 text-[10.5px] leading-relaxed text-muted">
         <p className="font-medium tracking-wide uppercase">Codex 48 · demo build</p>
-        <p>
-          All data is fictional{isMockMode() ? ' (mock mode)' : ''}. AI findings are drafts —
-          a human decides.
-        </p>
+        <p>Demo build: fictional brand. AI findings are drafts; a human decides.</p>
       </div>
     </div>
   )

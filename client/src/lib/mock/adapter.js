@@ -8,6 +8,7 @@
  */
 
 import { ApiError } from '../errors'
+import { CHECK_CHAR_LIMIT } from '../constants'
 import { createSeed, terminologyText } from './seed'
 import { runCheck, runTextChecks } from './engine'
 
@@ -351,7 +352,9 @@ export function createMockAdapter() {
      * Mock document extraction — same contract as POST /api/documents/extract.
      * Accepts any .pdf and returns ~600 characters of sample text as 2 pages;
      * a file named "scanned.pdf" fails with 422 so the error state is
-     * testable. Errors carry the friendly server messages the UI shows.
+     * testable, and "long.pdf" returns a truncated extraction capped at the
+     * shared character limit (Round 3, F6). Errors carry the friendly server
+     * messages the UI shows.
      */
     async extractDocument(file) {
       await wait()
@@ -369,6 +372,21 @@ export function createMockAdapter() {
           'We could not read text from this PDF. Scanned image PDFs are not supported. Paste the text instead.',
           { status: 422 },
         )
+      }
+      if (/^long\.pdf$/i.test(name.trim())) {
+        // Truncated-extraction sample: text capped at the shared character
+        // limit, reporting the document's true total so the UI quotes real
+        // numbers (Round 3, F6 item 12).
+        const text = PDF_SAMPLE_TEXT.repeat(
+          Math.ceil(CHECK_CHAR_LIMIT / PDF_SAMPLE_TEXT.length),
+        ).slice(0, CHECK_CHAR_LIMIT)
+        return {
+          filename: name,
+          pages: 10,
+          characters: 22219,
+          truncated: true,
+          text,
+        }
       }
       return {
         filename: name,

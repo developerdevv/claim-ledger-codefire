@@ -149,7 +149,7 @@ export default function GuidelineHealthPage() {
             <EmptyState
               icon={Ban}
               title="No overrides yet"
-              description="When reviewers dismiss a flag, the rules they disagree with most will appear here."
+              description="No flags have been dismissed yet. When reviewers dismiss a wrong flag, the most-overridden rules appear here."
             >
               <Button variant="primary" icon={ClipboardCheck} onClick={() => navigate('/review')}>
                 Go to Review
