@@ -245,6 +245,30 @@ export function normalizeCheckMode(raw) {
   return v === 'llm' || v === 'fallback' ? v : null
 }
 
+/**
+ * Derive the check mode from a RAW response (before claim normalization,
+ * which intentionally strips non-locked fields).
+ *
+ * The real server reports checkMode on EACH claim (claims[i].checkMode);
+ * the mock adapter also provides a top-level field. One rule for both:
+ *   1. a valid top-level checkMode wins (keeps mock mode working);
+ *   2. otherwise scan the claims: any "fallback" → "fallback" (the
+ *      conservative mode wins), else any "llm" → "llm";
+ *   3. otherwise null — no claims, field missing or odd values. The badge
+ *      then renders nothing. Never throws, whatever the shape of the data.
+ */
+export function deriveCheckMode(response) {
+  const top = normalizeCheckMode(response?.checkMode)
+  if (top) return top
+  let sawLlm = false
+  for (const claim of asArray(response?.claims)) {
+    const mode = normalizeCheckMode(claim?.checkMode)
+    if (mode === 'fallback') return 'fallback'
+    if (mode === 'llm') sawLlm = true
+  }
+  return sawLlm ? 'llm' : null
+}
+
 /** Lock the claim shape: { _id, draftId, text, verdict, factId, excerpt, explanation, suggestion, dismissal } */
 export function normalizeClaim(raw, index = 0) {
   const c = raw && typeof raw === 'object' ? raw : {}
@@ -407,7 +431,7 @@ export async function checkContent(payload) {
     manualReview: Boolean(res.manualReview),
     draftId,
     textChecks: normalizeTextChecks(res.textChecks),
-    checkMode: normalizeCheckMode(res.checkMode),
+    checkMode: deriveCheckMode(res),
   }
 }
 
@@ -429,7 +453,10 @@ export async function getDraft(id) {
     draft,
     claims: asArray(res?.claims ?? draft?.claims).map(normalizeClaim),
     textChecks: normalizeTextChecks(res?.textChecks ?? draft?.textChecks),
-    checkMode: normalizeCheckMode(res?.checkMode ?? draft?.checkMode),
+    checkMode: deriveCheckMode({
+      checkMode: res?.checkMode ?? draft?.checkMode,
+      claims: res?.claims ?? draft?.claims,
+    }),
   }
 }
 

@@ -784,8 +784,9 @@ export default function ReviewPage({ route }) {
                     )
                   })}
                   {/* How this check was produced — renders nothing when the
-                      mode is missing/unknown; never part of claim totals. */}
-                  <CheckModeBadge mode={checkMode} />
+                      mode is missing/unknown or the draft has no claims;
+                      never part of claim totals. */}
+                  <CheckModeBadge mode={claims?.length ? checkMode : null} />
                   {dismissedCount > 0 && (
                     <span className="inline-flex items-center gap-1.5 rounded-full border border-line-strong bg-tint px-3 py-1 text-xs font-semibold text-ink-soft">
                       <Ban size={13} aria-hidden="true" strokeWidth={2.2} />

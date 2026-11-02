@@ -170,6 +170,13 @@ export function createMockAdapter() {
           _id: nextId('C', 'claim'),
           draftId: draft._id,
           dismissal: null,
+          // Per-claim checkMode, same shape as the real server (which reports
+          // the mode on EVERY claim). Only seeded drafts carry it — claims
+          // created during the session stay without the field so the
+          // "unknown mode" path remains testable.
+          ...(MOCK_CHECK_MODES[draft._id]
+            ? { checkMode: MOCK_CHECK_MODES[draft._id] }
+            : {}),
         })
       }
     }
@@ -328,11 +335,14 @@ export function createMockAdapter() {
 
       return {
         draftId: draft._id,
-        claims: clone(stored),
+        // Per-claim checkMode on the response, same shape as the real server.
+        // The mock check IS the built-in rule engine — no AI is involved in
+        // mock mode — so every claim from it honestly reports "fallback".
+        // Stored claims deliberately do NOT keep the field for session
+        // drafts (their getDraft stays without checkMode → unknown state).
+        claims: clone(stored).map((c) => ({ ...c, checkMode: 'fallback' })),
         manualReview,
         textChecks: manualReview ? [] : clone(textChecksFor(draft._id, text)),
-        // The mock check IS the built-in rule engine — no AI is involved in
-        // mock mode, so honestly report the fallback path.
         checkMode: 'fallback',
       }
     },
