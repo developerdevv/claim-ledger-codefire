@@ -1,6 +1,6 @@
 # Claim Ledger - AI Evaluation Baseline Report
 
-**Execution Date:** 2026-10-28 22:27:37  
+**Execution Date:** 2026-11-03 10:43:33  
 **Provider / Model:** mock / mock-claim-engine-v1  
 **Evaluation Mode:** Deterministic Mock Pipeline  
 **Test Set Size:** 41 test cases  

@@ -138,9 +138,7 @@ Because model output is inherently probabilistic, Claim Ledger includes an expli
 ## Disclosures & Project Integrity
 
 - **AI Assistance:** In compliance with hackathon guidelines, the architecture, scaffolding, test cases, and evaluation scripts were created with AI assistance using **Antigravity** and reviewed, validated, and tested by team CODEFIRE.
-- **LLM Provider & Model:** 
-  - Primary production provider: **Gemini API** (`gemini-2.5-flash`) via `google-genai`.
-  - Fallback / local evaluation provider: **Mock Provider** (`mock-claim-engine-v1`) returning deterministic schema-compliant outputs.
+- **LLM Provider & Model:** The evaluation can run on a real model (Gemini, `ge3.5-flash`); measure -on (3 Nov 2026) or in deterministic mock mode. Mock mode (`mock-claim-engine-v1`) tests the pipeline and validator only; its 100% score is a pipeline test and is NOT a model accuracy figure. The live application calls Gemini from the Node server. Measured results are in `docs/baseline-report.md`.
 - **Libraries Used:** Standard Python 3.10+ library, `jsonschema` (schema validation), `python-dotenv` (environment configuration), `pytest` (testing), and `google-genai` (LLM SDK). No heavy ML frameworks (like scikit-learn) are used; precision and recall formulas are implemented directly by hand.
 - **Sample Data:** All brand facts, terminology rules, and marketing drafts in `seed-data.json` are fictional scenarios created specifically for demonstration and testing purposes.
 - **Accuracy Reporting:** No speculative accuracy claims are made in this documentation; all reported performance figures reflect empirical measurements produced by `ai_eval/eval/run.py`.
