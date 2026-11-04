@@ -6,7 +6,8 @@ Claim Ledger checks marketing content before it goes public. It splits a draft i
 
 Built by team **CodeFire** for the Codex 48 hackathon (problem set by Inkloom AI).
 
-![Claim ledger: verdicts, an AI-assisted badge and source receipts](docs/screenshots/claim-ledger.png)
+<img width="1470" height="956" alt="Screenshot 2026-10-28 at 12 35 27 AM" src="https://github.com/user-attachments/assets/bc918fa8-161c-4b27-acdb-42a073cb06db" />
+
 
 ---
 
@@ -36,7 +37,7 @@ Built by team **CodeFire** for the Codex 48 hackathon (problem set by Inkloom AI
 
 ## What it does
 
-![A conflict with its receipt and a suggested rewrite](docs/screenshots/conflict-card.png)
+
 
 ### Core product
 - **Claim-by-claim checking** with four verdicts: **Verified**, **Conflicts**, **Unsupported** (never presented as "false") and **Manual review**.
